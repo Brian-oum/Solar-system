@@ -1,0 +1,40 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Solar PMS{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <header class="topbar">
+        <a class="brand" href="{% url 'dashboard' %}">Solar PMS</a>
+        <nav>
+            {% if user.is_admin_role %}
+                <a href="{% url 'accounts:user_list' %}">Users</a>
+            {% endif %}
+        </nav>
+        <div class="user-info">
+            <span>{{ user.get_full_name|default:user.username }}</span>
+            <span class="role-badge role-{{ user.role }}">{{ user.get_role_display }}</span>
+            <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="link-button">Log out</button>
+            </form>
+        </div>
+    </header>
+    {% endif %}
+
+    <main class="container">
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="message {{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

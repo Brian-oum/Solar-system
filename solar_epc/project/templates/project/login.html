@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Log in — Solar PMS{% endblock %}
+{% block content %}
+<div class="login-wrap">
+    <h1>Solar PMS</h1>
+    <p>Sign in to continue.</p>
+
+    {% if form.non_field_errors %}
+        <ul class="messages">
+            {% for error in form.non_field_errors %}
+                <li class="message error">{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <p>
+            <label for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+        </p>
+        <p>
+            <label for="{{ form.password.id_for_label }}">Password</label>
+            {{ form.password }}
+        </p>
+        <button class="btn" type="submit">Log in</button>
+    </form>
+
+    <p class="auth-switch">Don't have an account? <a href="{% url 'accounts:register' %}">Sign up</a></p>
+</div>
+{% endblock %}
