@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sign up — Solar PMS{% endblock %}
+{% block content %}
+<div class="login-wrap">
+    <h1>Create your account</h1>
+    <p>Registers you as a site engineer. Admin accounts are created by an existing admin.</p>
+
+    {% if form.non_field_errors %}
+        <ul class="messages">
+            {% for error in form.non_field_errors %}
+                <li class="message error">{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn" type="submit">Sign up</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+</div>
+{% endblock %}
