@@ -1,0 +1,79 @@
+{% extends "project/base.html" %}
+{% block title %}{{ entry.label }} — Catalog — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Catalog</div>
+        <h1>{{ entry.label }}</h1>
+        <p class="desc">{{ items|length }} item{{ items|length|pluralize }} in the catalog.</p>
+    </div>
+    <a href="{% url 'equipment_create' kind %}" class="btn btn-accent">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add {{ entry.singular }}
+    </a>
+</div>
+
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <form method="get" style="flex:1; max-width:280px;">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search by name or brand…">
+        </form>
+        <a href="{% url 'catalog_home' %}" style="font-size:13px; font-weight:600; color:var(--muted); text-decoration:none;">&larr; All catalog</a>
+    </div>
+
+    {% if items %}
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Name</th>
+                {% if kind == "panels" %}<th>Wattage</th>{% endif %}
+                {% if kind == "inverters" %}<th>Capacity</th><th>Phase</th>{% endif %}
+                {% if kind == "batteries" %}<th>Capacity</th><th>Chemistry</th>{% endif %}
+                <th>Price (KES)</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr onclick="window.location='{% url 'equipment_edit' kind item.pk %}'" style="cursor:pointer;">
+                <td>
+                    <div style="font-weight:600;">{{ item.name }}</div>
+                    <div class="mono" style="font-size:11.5px; color:var(--muted);">{{ item.brand|default:"" }}</div>
+                </td>
+                {% if kind == "panels" %}<td class="mono">{{ item.wattage_w }}W</td>{% endif %}
+                {% if kind == "inverters" %}<td class="mono">{{ item.capacity_kw }}kW</td><td>{{ item.get_phase_display }}</td>{% endif %}
+                {% if kind == "batteries" %}<td class="mono">{{ item.capacity_kwh }}kWh</td><td>{{ item.get_chemistry_display }}</td>{% endif %}
+                <td class="mono">{{ item.unit_price_kes|default:"—" }}</td>
+                <td class="mono">{{ item.stock_quantity }}</td>
+                <td>
+                    {% if item.in_stock %}
+                        <span class="status-badge quotation">In stock</span>
+                    {% elif item.is_active %}
+                        <span class="status-badge lead">Out of stock</span>
+                    {% else %}
+                        <span class="status-badge">Inactive</span>
+                    {% endif %}
+                </td>
+                <td onclick="event.stopPropagation();">
+                    <form method="post" action="{% url 'equipment_delete' kind item.pk %}" onsubmit="return confirm('Remove {{ item.name|escapejs }} from the catalog?');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="link-button">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No {{ entry.label|lower }} yet</h3>
+        <p>Add your first item so the sizing calculator has something to recommend.</p>
+        <a href="{% url 'equipment_create' kind %}" class="btn btn-accent" style="margin-top:14px;">Add {{ entry.singular }}</a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

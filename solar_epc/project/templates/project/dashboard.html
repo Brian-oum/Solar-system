@@ -1,0 +1,115 @@
+{% extends "project/base.html" %}
+{% block title %}Dashboard — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Overview</div>
+        <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
+        <p class="desc">Here's where your book of business stands right now.</p>
+    </div>
+    <a href="{% url 'client_register' %}" class="btn btn-accent">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Register client
+    </a>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="label">Total clients</div>
+        <div class="value mono">{{ total_customers }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">New leads this month</div>
+        <div class="value mono">{{ leads_this_month }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Active projects</div>
+        <div class="value mono">{{ active_projects }}</div>
+    </div>
+    {% if user.is_admin_role %}
+    <div class="stat-card">
+        <div class="label">Active catalog items</div>
+        <div class="value mono">{{ catalog_total_active }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h2 style="font-size:15px;">Recently registered clients</h2>
+        <a href="{% url 'client_list' %}" style="font-size:13px; font-weight:600; color:var(--muted); text-decoration:none;">View all &rarr;</a>
+    </div>
+
+    {% if recent_customers %}
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Type</th>
+                <th>County</th>
+                <th>Registered</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in recent_customers %}
+            <tr onclick="window.location='{% url 'client_detail' c.customer_id %}'" style="cursor:pointer;">
+                <td>
+                    <div style="font-weight:600;">{{ c.full_name }}</div>
+                    <div class="mono" style="font-size:11.5px; color:var(--muted);">{{ c.customer_id }}</div>
+                </td>
+                <td><span class="type-badge">{{ c.get_customer_type_display }}</span></td>
+                <td>{{ c.county }}</td>
+                <td>{{ c.created_at|date:"d M Y" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No clients yet</h3>
+        <p>Register your first client to kick off a project.</p>
+        <a href="{% url 'client_register' %}" class="btn btn-accent" style="margin-top:14px;">Register client</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if user.is_admin_role %}
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h2 style="font-size:15px;">Low stock in the catalog</h2>
+        <a href="{% url 'catalog_home' %}" style="font-size:13px; font-weight:600; color:var(--muted); text-decoration:none;">Manage catalog &rarr;</a>
+    </div>
+
+    {% if low_stock_items %}
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Stock remaining</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in low_stock_items %}
+            <tr onclick="window.location='{% url 'equipment_edit' row.kind row.item.pk %}'" style="cursor:pointer;">
+                <td>
+                    <div style="font-weight:600;">{{ row.item.name }}</div>
+                    <div class="mono" style="font-size:11.5px; color:var(--muted);">{{ row.item.brand|default:"" }}</div>
+                </td>
+                <td><span class="type-badge">{{ row.singular|capfirst }}</span></td>
+                <td class="mono">{{ row.item.stock_quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>Stock looks healthy</h3>
+        <p>No active catalog items are running low right now.</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

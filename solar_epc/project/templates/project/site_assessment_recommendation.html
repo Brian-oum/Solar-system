@@ -1,0 +1,102 @@
+{% extends "project/base.html" %}
+{% block title %}Recommendation — {{ customer.full_name }} — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 2 &middot; Site assessment</div>
+        <h1>System recommendation</h1>
+        <p class="desc">{{ customer.full_name }} &middot; <span class="mono">{{ project.project_id }}</span></p>
+    </div>
+    <div style="display:flex; gap:.5rem;">
+        <a href="{% url 'site_assessment_survey' customer.customer_id %}" class="btn btn-ghost">&larr; Back to survey</a>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-accent">Recalculate</button>
+        </form>
+    </div>
+</div>
+
+{% if recommendation.warnings %}
+<ul class="messages">
+    {% for warning in recommendation.warnings %}
+    <li class="message warning">{{ warning }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="label">Daily consumption</div>
+        <div class="value mono">{{ recommendation.daily_consumption_kwh|default:"—" }} kWh</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Target system size</div>
+        <div class="value mono">{{ recommendation.target_system_size_kw|default:"—" }} kW</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Target battery capacity</div>
+        <div class="value mono">{{ recommendation.target_battery_capacity_kwh|default:"—" }} kWh</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Backup autonomy target</div>
+        <div class="value mono">{{ recommendation.backup_autonomy_hours }} hrs</div>
+    </div>
+</div>
+
+<div class="survey-layout">
+    <div class="card survey-main">
+        <h2 style="font-size:15px; margin-bottom:14px;">Matched equipment</h2>
+        <table class="data">
+            <thead>
+                <tr><th>Role</th><th>Item</th><th>Qty</th><th>Unit price (KES)</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Panels</td>
+                    <td>{% if recommendation.panel %}{{ recommendation.panel }}{% else %}<span class="optional">No match found</span>{% endif %}</td>
+                    <td class="mono">{{ recommendation.panel_quantity }}</td>
+                    <td class="mono">{{ recommendation.panel.unit_price_kes|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <td>Inverter</td>
+                    <td>{% if recommendation.inverter %}{{ recommendation.inverter }}{% else %}<span class="optional">No match found</span>{% endif %}</td>
+                    <td class="mono">{% if recommendation.inverter %}1{% else %}0{% endif %}</td>
+                    <td class="mono">{{ recommendation.inverter.unit_price_kes|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <td>Battery</td>
+                    <td>{% if recommendation.battery %}{{ recommendation.battery }}{% else %}<span class="optional">No match found</span>{% endif %}</td>
+                    <td class="mono">{{ recommendation.battery_quantity }}</td>
+                    <td class="mono">{{ recommendation.battery.unit_price_kes|default:"—" }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        {% if recommendation.estimated_total_cost_kes %}
+        <div class="readiness-estimate" style="margin-top:1rem;">
+            <div class="readiness-estimate-label">Estimated equipment cost</div>
+            <div class="readiness-estimate-value mono">KES {{ recommendation.estimated_total_cost_kes }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <aside class="readiness-panel">
+        <div class="readiness-title">Assessor's own figure</div>
+        <div class="readiness-sub">Entered manually on the survey — this always takes precedence over the calculator above.</div>
+        <div class="readiness-estimate" style="margin-top:1rem;">
+            <div class="readiness-estimate-label">Recommended system (manual)</div>
+            <div class="readiness-estimate-value mono">
+                {% if assessment.recommended_system_size_kw %}{{ assessment.recommended_system_size_kw }} kW{% else %}Not entered{% endif %}
+            </div>
+        </div>
+        {% if assessment.assessor_notes %}
+        <div class="readiness-row-stacked" style="margin-top:1rem;">
+            <span class="readiness-label">Assessor notes</span>
+            <p>{{ assessment.assessor_notes }}</p>
+        </div>
+        {% endif %}
+    </aside>
+</div>
+
+{% endblock %}

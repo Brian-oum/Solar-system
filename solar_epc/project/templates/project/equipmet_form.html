@@ -1,0 +1,130 @@
+{% extends "project/base.html" %}
+{% block title %}{% if instance %}Edit{% else %}Add{% endif %} {{ entry.singular }} — Catalog — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Catalog &middot; {{ entry.label }}</div>
+        <h1>{% if instance %}Edit {{ instance }}{% else %}Add {{ entry.singular }}{% endif %}</h1>
+    </div>
+    <a href="{% url 'equipment_list' kind %}" class="btn btn-ghost">&larr; Back</a>
+</div>
+
+<div class="card form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.name.id_for_label }}">Name</label>
+                {{ form.name }}
+                {% for e in form.name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.brand.id_for_label }}">Brand <span class="optional">(optional)</span></label>
+                {{ form.brand }}
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="{{ form.model_number.id_for_label }}">Model number <span class="optional">(optional)</span></label>
+            {{ form.model_number }}
+        </div>
+
+        {% if kind == "panels" %}
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.wattage_w.id_for_label }}">Wattage (W)</label>
+                {{ form.wattage_w }}
+                {% for e in form.wattage_w.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.panel_area_sqm.id_for_label }}">Panel footprint (m&sup2;) <span class="optional">(optional)</span></label>
+                {{ form.panel_area_sqm }}
+                <div class="helptext">Physical area of one panel — used to check it fits the roof.</div>
+            </div>
+        </div>
+        <div class="field-group">
+            <label for="{{ form.efficiency_percent.id_for_label }}">Efficiency (%) <span class="optional">(optional)</span></label>
+            {{ form.efficiency_percent }}
+        </div>
+        {% endif %}
+
+        {% if kind == "inverters" %}
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.capacity_kw.id_for_label }}">Rated output (kW)</label>
+                {{ form.capacity_kw }}
+                {% for e in form.capacity_kw.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.phase.id_for_label }}">Phase</label>
+                {{ form.phase }}
+            </div>
+        </div>
+        <div class="field-group field-checkbox">
+            {{ form.is_hybrid }}
+            <label for="{{ form.is_hybrid.id_for_label }}">Hybrid — can charge/discharge a battery bank</label>
+        </div>
+        <div class="field-group">
+            <label for="{{ form.max_input_voltage.id_for_label }}">Max input voltage <span class="optional">(optional)</span></label>
+            {{ form.max_input_voltage }}
+        </div>
+        {% endif %}
+
+        {% if kind == "batteries" %}
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.capacity_kwh.id_for_label }}">Capacity (kWh)</label>
+                {{ form.capacity_kwh }}
+                {% for e in form.capacity_kwh.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.chemistry.id_for_label }}">Chemistry</label>
+                {{ form.chemistry }}
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.usable_depth_of_discharge_percent.id_for_label }}">Usable DoD (%)</label>
+                {{ form.usable_depth_of_discharge_percent }}
+                <div class="helptext">Typically ~90% for lithium, ~50% for lead-acid.</div>
+            </div>
+            <div class="field-group">
+                <label for="{{ form.max_discharge_rate_kw.id_for_label }}">Max discharge rate (kW) <span class="optional">(optional)</span></label>
+                {{ form.max_discharge_rate_kw }}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="field-section-title">Pricing &amp; stock</div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.unit_price_kes.id_for_label }}">Unit price (KES) <span class="optional">(optional)</span></label>
+                {{ form.unit_price_kes }}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.stock_quantity.id_for_label }}">Stock quantity</label>
+                {{ form.stock_quantity }}
+            </div>
+        </div>
+        <div class="field-group field-checkbox">
+            {{ form.is_active }}
+            <label for="{{ form.is_active.id_for_label }}">Active — visible to the sizing calculator</label>
+        </div>
+        <div class="field-group">
+            <label for="{{ form.notes.id_for_label }}">Notes <span class="optional">(optional)</span></label>
+            {{ form.notes }}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">{% if instance %}Save changes{% else %}Add {{ entry.singular }}{% endif %}</button>
+            <a href="{% url 'equipment_list' kind %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

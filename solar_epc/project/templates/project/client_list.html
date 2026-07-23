@@ -1,0 +1,68 @@
+{% extends "project/base.html" %}
+{% block title %}Clients — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 1 &middot; Client registration</div>
+        <h1>Clients</h1>
+        <p class="desc">Every registered customer and the project their registration kicked off.</p>
+    </div>
+    <a href="{% url 'client_register' %}" class="btn btn-accent">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Register client
+    </a>
+</div>
+
+<form class="search-bar" method="get">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by name, ID, phone or email">
+    <button type="submit" class="btn btn-ghost">Search</button>
+    {% if query %}<a href="{% url 'client_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
+</form>
+
+<div class="card" style="padding:0;">
+    {% if customers %}
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Type</th>
+                <th>County</th>
+                <th>Contact</th>
+                <th>Sales rep</th>
+                <th>Project status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in customers %}
+            <tr onclick="window.location='{% url 'client_detail' c.customer_id %}'" style="cursor:pointer;">
+                <td>
+                    <div style="font-weight:600;">{{ c.full_name }}</div>
+                    <div class="mono" style="font-size:11.5px; color:var(--muted);">{{ c.customer_id }}</div>
+                </td>
+                <td><span class="type-badge">{{ c.get_customer_type_display }}</span></td>
+                <td>{{ c.county }}</td>
+                <td>
+                    <div>{{ c.phone_number }}</div>
+                    <div style="font-size:12px; color:var(--muted);">{{ c.email|default:"—" }}</div>
+                </td>
+                <td>{{ c.assigned_rep.get_full_name|default:c.assigned_rep.username|default:"Unassigned" }}</td>
+                <td>
+                    {% with p=c.projects.first %}
+                        {% if p %}<span class="status-badge {{ p.status }}">{{ p.get_status_display }}</span>{% else %}—{% endif %}
+                    {% endwith %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>{% if query %}No matches{% else %}No clients yet{% endif %}</h3>
+        <p>{% if query %}Try a different name, ID, phone or email.{% else %}Register your first client to kick off a project.{% endif %}</p>
+        {% if not query %}<a href="{% url 'client_register' %}" class="btn btn-accent" style="margin-top:14px;">Register client</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
