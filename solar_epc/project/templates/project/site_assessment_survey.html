@@ -1,0 +1,394 @@
+{% extends "project/base.html" %}
+{% block title %}Site assessment — {{ customer.full_name }} — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 2 &middot; Site assessment</div>
+        <h1>Technical survey</h1>
+        <p class="desc">
+            {{ customer.full_name }} &middot; <span class="mono">{{ project.project_id }}</span>
+            &middot; visit {{ assessment.scheduled_date|date:"d M Y, H:i" }}
+            {% if assessment.is_completed %} &middot; <span class="status-badge quotation">Completed</span>{% endif %}
+        </p>
+    </div>
+    <div style="display:flex; gap:.5rem;">
+        {% if assessment.is_completed %}
+        <a href="{% url 'site_assessment_recommendation' customer.customer_id %}" class="btn btn-ghost">View recommendation</a>
+        {% endif %}
+        <a href="{% url 'client_detail' customer.customer_id %}" class="btn btn-ghost">&larr; Back to client</a>
+    </div>
+</div>
+
+
+<div class="survey-layout">
+
+    <div class="card survey-main" id="survey-card">
+
+        <div class="sun-stepper" id="sun-stepper">
+            <div class="sun-stepper-track"></div>
+            <div class="sun-marker" id="sun-marker">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+                </svg>
+            </div>
+            <div class="sun-stepper-nodes" id="sun-nodes">
+                <button type="button" class="sun-node" data-step="0"><span class="node-dot"></span><span class="node-label">Roof</span></button>
+                <button type="button" class="sun-node" data-step="1"><span class="node-dot"></span><span class="node-label">Shading</span></button>
+                <button type="button" class="sun-node" data-step="2"><span class="node-dot"></span><span class="node-label">Electrical</span></button>
+                <button type="button" class="sun-node" data-step="3"><span class="node-dot"></span><span class="node-label">Access</span></button>
+                <button type="button" class="sun-node" data-step="4"><span class="node-dot"></span><span class="node-label">Recommend</span></button>
+            </div>
+        </div>
+
+        <form method="post" novalidate id="survey-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+
+            <section class="survey-step" data-step="0">
+                <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Roof</div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="{{ form.roof_type.id_for_label }}">Roof type</label>
+                        {{ form.roof_type }}
+                    </div>
+                    <div class="field-group">
+                        <label for="{{ form.roof_material.id_for_label }}">Roof material <span class="optional">(optional)</span></label>
+                        {{ form.roof_material }}
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="{{ form.roof_area_sqm.id_for_label }}">Roof area (m&sup2;) <span class="optional">(optional)</span></label>
+                        {{ form.roof_area_sqm }}
+                    </div>
+                    <div class="field-group">
+                        <label for="{{ form.roof_orientation.id_for_label }}">Orientation</label>
+                        {{ form.roof_orientation }}
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="{{ form.roof_tilt_degrees.id_for_label }}">Roof tilt (&deg;) <span class="optional">(optional)</span></label>
+                        {{ form.roof_tilt_degrees }}
+                    </div>
+                    <div class="field-group">
+                        <label for="{{ form.roof_condition.id_for_label }}">Roof condition</label>
+                        {{ form.roof_condition }}
+                    </div>
+                </div>
+                <div class="field-group field-checkbox">
+                    {{ form.structural_integrity_ok }}
+                    <label for="{{ form.structural_integrity_ok.id_for_label }}">Structurally sound for panel mounting</label>
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.structural_notes.id_for_label }}">Structural notes <span class="optional">(optional)</span></label>
+                    {{ form.structural_notes }}
+                </div>
+            </section>
+
+            <section class="survey-step" data-step="1">
+                <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Shading</div>
+                <div class="field-group">
+                    <label for="{{ form.shading_level.id_for_label }}">Shading level</label>
+                    {{ form.shading_level }}
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.shading_notes.id_for_label }}">Shading notes <span class="optional">(optional)</span></label>
+                    {{ form.shading_notes }}
+                </div>
+            </section>
+
+            <section class="survey-step" data-step="2">
+                <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Electrical</div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="{{ form.current_supply_type.id_for_label }}">Current supply type</label>
+                        {{ form.current_supply_type }}
+                    </div>
+                    <div class="field-group">
+                        <label for="{{ form.electrical_panel_capacity_amps.id_for_label }}">Panel capacity (A) <span class="optional">(optional)</span></label>
+                        {{ form.electrical_panel_capacity_amps }}
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.average_monthly_consumption_kwh.id_for_label }}">Average monthly consumption (kWh) <span class="optional">(optional)</span></label>
+                    {{ form.average_monthly_consumption_kwh }}
+                </div>
+                <div class="field-group field-checkbox">
+                    {{ form.has_existing_backup }}
+                    <label for="{{ form.has_existing_backup.id_for_label }}">Has existing backup (generator / inverter)</label>
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.backup_notes.id_for_label }}">Backup notes <span class="optional">(optional)</span></label>
+                    {{ form.backup_notes }}
+                </div>
+            </section>
+
+            <section class="survey-step" data-step="3">
+                <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Access &amp; space</div>
+                <div class="field-group">
+                    <label for="{{ form.available_installation_area_sqm.id_for_label }}">Available installation area (m&sup2;) <span class="optional">(optional)</span></label>
+                    {{ form.available_installation_area_sqm }}
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.roof_access_notes.id_for_label }}">Access notes <span class="optional">(optional)</span></label>
+                    {{ form.roof_access_notes }}
+                </div>
+            </section>
+
+            <section class="survey-step" data-step="4">
+                <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Recommendation</div>
+                <div class="field-group">
+                    <div class="helptext" id="auto-estimate-line">
+                        Rule-based estimate from the numbers entered so far: <span class="mono" id="auto-estimate-value">—</span>
+                        <button type="button" class="btn btn-ghost btn-sm" id="use-estimate-btn" style="margin-left:.5rem;">Use this</button>
+                    </div>
+                    <label for="{{ form.recommended_system_size_kw.id_for_label }}">Recommended system size (kW) <span class="optional">(optional)</span></label>
+                    {{ form.recommended_system_size_kw }}
+                    <div class="helptext">This is your own call — it's saved as-is regardless of the estimate above. The full catalog-matched recommendation (specific panels/inverter/battery) is generated after you complete the assessment.</div>
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.assessor_notes.id_for_label }}">Assessor notes <span class="optional">(optional)</span></label>
+                    {{ form.assessor_notes }}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-accent">
+                        {% if assessment.is_completed %}Save survey{% else %}Complete assessment &amp; move to quotation{% endif %}
+                    </button>
+                    <a href="{% url 'client_detail' customer.customer_id %}" class="btn btn-ghost">Cancel</a>
+                </div>
+            </section>
+
+            <div class="survey-nav" id="survey-nav">
+                <button type="button" class="btn btn-ghost" id="survey-back">&larr; Back</button>
+                <button type="button" class="btn btn-accent" id="survey-next">Next &rarr;</button>
+            </div>
+        </form>
+    </div>
+
+    <aside class="readiness-panel" id="readiness-panel">
+        <div class="readiness-header">
+            <div class="readiness-ring">
+                <svg viewBox="0 0 60 60" width="52" height="52">
+                    <circle class="ring-bg" cx="30" cy="30" r="26"/>
+                    <circle class="ring-fg" id="ring-fg" cx="30" cy="30" r="26"/>
+                </svg>
+                <span id="readiness-pct">0%</span>
+            </div>
+            <div>
+                <div class="readiness-title">Site readiness</div>
+                <div class="readiness-sub" id="readiness-sub">Just getting started</div>
+            </div>
+        </div>
+
+        <div class="readiness-row">
+            <span class="readiness-label">Roof</span>
+            <div class="readiness-bar"><div class="readiness-bar-fill" id="bar-roof"></div></div>
+        </div>
+        <div class="readiness-value-line" id="val-roof">Not yet assessed</div>
+
+        <div class="readiness-row">
+            <span class="readiness-label">Shading</span>
+            <span class="sun-dots" id="dots-shading">○○○○○</span>
+        </div>
+
+        <div class="readiness-row readiness-row-stacked">
+            <span class="readiness-label">Power</span>
+            <span class="readiness-value" id="val-power">&mdash;</span>
+        </div>
+
+        <div class="readiness-row readiness-row-stacked">
+            <span class="readiness-label">Space</span>
+            <span class="readiness-value mono" id="val-space">&mdash;</span>
+        </div>
+
+        <div class="readiness-estimate">
+            <div class="readiness-estimate-label">Recommended system</div>
+            <div class="readiness-estimate-value mono" id="val-estimate">&mdash;</div>
+        </div>
+    </aside>
+
+</div>
+
+<script>
+(function () {
+    const steps = Array.prototype.slice.call(document.querySelectorAll('.survey-step'));
+    const nodes = Array.prototype.slice.call(document.querySelectorAll('.sun-node'));
+    const nodesContainer = document.getElementById('sun-nodes');
+    const sunMarker = document.getElementById('sun-marker');
+    const surveyCard = document.getElementById('survey-card');
+    const backBtn = document.getElementById('survey-back');
+    const nextBtn = document.getElementById('survey-next');
+    const navBar = document.getElementById('survey-nav');
+
+    let currentStep = 0;
+
+    function findFirstErrorStep() {
+        for (let i = 0; i < steps.length; i++) {
+            if (steps[i].querySelector('.errorlist')) return i;
+        }
+        return 0;
+    }
+
+    function positionSun(index) {
+        const total = nodes.length - 1;
+        const progress = total > 0 ? index / total : 0;
+        const trackWidth = nodesContainer.offsetWidth;
+        const x = progress * trackWidth;
+        const arcHeight = 30; // the sun rises over the middle station, sets at the ends
+        const y = -Math.sin(Math.PI * progress) * arcHeight;
+        sunMarker.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+    }
+
+    function showStep(index) {
+        currentStep = index;
+        steps.forEach(function (s, i) { s.classList.toggle('active', i === index); });
+        nodes.forEach(function (n, i) {
+            n.classList.toggle('current', i === index);
+            n.classList.toggle('done', i < index);
+        });
+        positionSun(index);
+        backBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+        navBar.style.display = index === steps.length - 1 ? 'none' : 'flex';
+        surveyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    nodes.forEach(function (n) {
+        n.addEventListener('click', function () { showStep(parseInt(n.dataset.step, 10)); });
+    });
+    backBtn.addEventListener('click', function () { if (currentStep > 0) showStep(currentStep - 1); });
+    nextBtn.addEventListener('click', function () { if (currentStep < steps.length - 1) showStep(currentStep + 1); });
+    window.addEventListener('resize', function () { positionSun(currentStep); });
+
+    // Enable the wizard only once JS has run — without it, every step
+    // stays visible and this is just a plain long-scrolling form.
+    document.getElementById('survey-form').classList.add('js-wizard');
+    showStep(findFirstErrorStep());
+
+    // ---------------------------------------------------------------- live readiness panel
+    function byId(id) { return document.getElementById(id); }
+    const fieldIds = [
+        'id_roof_condition', 'id_structural_integrity_ok', 'id_shading_level',
+        'id_current_supply_type', 'id_electrical_panel_capacity_amps',
+        'id_available_installation_area_sqm', 'id_recommended_system_size_kw',
+        'id_average_monthly_consumption_kwh'
+    ];
+
+    // Mirrors the constants in sizing.py's compute_sizing() — kept in sync
+    // manually since this is just a live preview; the authoritative
+    // catalog-matched figure is calculated server-side once the survey is
+    // submitted (see the recommendation page).
+    const PEAK_SUN_HOURS = 4.5;
+    const PERFORMANCE_RATIO = 0.80;
+    const SHADING_DERATE = { none: 1.00, minimal: 0.90, moderate: 0.75, heavy: 0.55, '': 1.00 };
+    const MIN_SYSTEM_SIZE_KW = 1.0;
+
+    function computeAutoEstimateKw() {
+        const consumptionEl = byId('id_average_monthly_consumption_kwh');
+        const shadingEl = byId('id_shading_level');
+        const monthlyKwh = consumptionEl && consumptionEl.value ? parseFloat(consumptionEl.value) : NaN;
+        if (!monthlyKwh || monthlyKwh <= 0) return null;
+
+        const dailyKwh = monthlyKwh / 30;
+        const shadingFactor = SHADING_DERATE[shadingEl ? shadingEl.value : ''] ?? 1.0;
+        const effectiveSunHours = PEAK_SUN_HOURS * shadingFactor * PERFORMANCE_RATIO;
+        if (effectiveSunHours <= 0) return null;
+
+        return Math.max(dailyKwh / effectiveSunHours, MIN_SYSTEM_SIZE_KW);
+    }
+
+    const ringFg = byId('ring-fg');
+    const ringCircumference = 2 * Math.PI * 26;
+    ringFg.style.strokeDasharray = ringCircumference.toFixed(1);
+
+    function setRing(pct) {
+        const offset = ringCircumference * (1 - pct / 100);
+        ringFg.style.strokeDashoffset = offset.toFixed(1);
+        byId('readiness-pct').textContent = pct + '%';
+        byId('readiness-sub').textContent =
+            pct === 0 ? 'Just getting started' :
+            pct < 50 ? 'Filling in the picture' :
+            pct < 100 ? 'Almost there' : 'Survey complete';
+    }
+
+    const roofScoreMap = { excellent: 100, good: 75, fair: 45, poor: 20 };
+    const shadeDotsMap = { none: 5, minimal: 4, moderate: 2, heavy: 1 };
+
+    function selectedLabel(select) {
+        if (!select || select.selectedIndex < 0) return '';
+        const opt = select.options[select.selectedIndex];
+        return opt ? opt.text : '';
+    }
+
+    function updateReadiness() {
+        const roofConditionEl = byId('id_roof_condition');
+        const structuralEl = byId('id_structural_integrity_ok');
+        const shadingEl = byId('id_shading_level');
+        const supplyEl = byId('id_current_supply_type');
+        const ampsEl = byId('id_electrical_panel_capacity_amps');
+        const spaceEl = byId('id_available_installation_area_sqm');
+        const estimateEl = byId('id_recommended_system_size_kw');
+
+        const roofCondition = roofConditionEl ? roofConditionEl.value : '';
+        const roofScore = roofScoreMap[roofCondition] || 0;
+        byId('bar-roof').style.width = roofScore + '%';
+        byId('val-roof').textContent = roofCondition
+            ? selectedLabel(roofConditionEl) + (structuralEl && !structuralEl.checked ? ' — structure needs review' : '')
+            : 'Not yet assessed';
+
+        const shadingLevel = shadingEl ? shadingEl.value : '';
+        const filled = shadeDotsMap[shadingLevel] || 0;
+        byId('dots-shading').textContent = '●'.repeat(filled) + '○'.repeat(5 - filled);
+
+        const supplyType = supplyEl ? supplyEl.value : '';
+        const amps = ampsEl ? ampsEl.value : '';
+        byId('val-power').textContent = supplyType
+            ? selectedLabel(supplyEl) + (amps ? ' · ' + amps + 'A' : '')
+            : '—';
+
+        const space = spaceEl ? spaceEl.value : '';
+        byId('val-space').textContent = space ? space + ' m²' : '—';
+
+        const manualEstimate = estimateEl ? estimateEl.value : '';
+        const autoEstimateKw = computeAutoEstimateKw();
+        const autoEstimateEl = byId('auto-estimate-value');
+        if (autoEstimateEl) {
+            autoEstimateEl.textContent = autoEstimateKw !== null ? autoEstimateKw.toFixed(1) + ' kW' : 'add monthly consumption';
+        }
+        byId('val-estimate').textContent = manualEstimate
+            ? manualEstimate + ' kW (manual)'
+            : (autoEstimateKw !== null ? autoEstimateKw.toFixed(1) + ' kW (auto)' : '—');
+
+        const tracked = [roofCondition, shadingLevel, supplyType, space, manualEstimate || autoEstimateKw];
+        const filledCount = tracked.filter(Boolean).length;
+        setRing(Math.round((filledCount / tracked.length) * 100));
+    }
+
+    const useEstimateBtn = byId('use-estimate-btn');
+    if (useEstimateBtn) {
+        useEstimateBtn.addEventListener('click', function () {
+            const autoEstimateKw = computeAutoEstimateKw();
+            const targetEl = byId('id_recommended_system_size_kw');
+            if (autoEstimateKw !== null && targetEl) {
+                targetEl.value = autoEstimateKw.toFixed(1);
+                updateReadiness();
+            }
+        });
+    }
+
+    fieldIds.forEach(function (id) {
+        const el = byId(id);
+        if (el) el.addEventListener('input', updateReadiness);
+        if (el) el.addEventListener('change', updateReadiness);
+    });
+
+    updateReadiness();
+})();
+</script>
+
+{% endblock %}

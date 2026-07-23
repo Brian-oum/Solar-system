@@ -1,0 +1,46 @@
+{% extends "project/base.html" %}
+{% block title %}Equipment catalog — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Catalog</div>
+        <h1>Equipment catalog</h1>
+        <p class="desc">Panels, inverters and batteries the sizing calculator matches recommendations against. Only active, in-stock items are ever recommended.</p>
+    </div>
+</div>
+
+<div class="stat-grid">
+    {% for card in catalog_cards %}
+    <a href="{% url 'equipment_list' card.kind %}" class="stat-card" style="text-decoration:none; display:block;">
+        <div class="label">{{ card.entry.label }}</div>
+        <div class="value mono">{{ card.count }}</div>
+    </a>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2 style="font-size:15px; margin-bottom:14px;">Manage catalog items</h2>
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Items</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for card in catalog_cards %}
+            <tr onclick="window.location='{% url 'equipment_list' card.kind %}'" style="cursor:pointer;">
+                <td style="font-weight:600;">{{ card.entry.label }}</td>
+                <td class="mono">{{ card.count }}</td>
+                <td>
+                    <a href="{% url 'equipment_create' card.kind %}" class="btn btn-ghost" onclick="event.stopPropagation();">+ Add {{ card.entry.singular }}</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

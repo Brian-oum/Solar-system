@@ -1,0 +1,432 @@
+{% extends "project/base.html" %}
+{% block title %}Register client — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 1 &middot; Client registration</div>
+        <h1>Register a new client</h1>
+        <p class="desc">Creates the customer profile and opens a new project with status Lead.</p>
+    </div>
+</div>
+
+<div class="card form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        <div class="field-section-title">Contact details</div>
+        <div class="field-group">
+            <label for="{{ form.full_name.id_for_label }}">Customer name</label>
+            {{ form.full_name }}
+            {% for e in form.full_name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+        </div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.phone_number.id_for_label }}">Phone number</label>
+                {{ form.phone_number }}
+                {% for e in form.phone_number.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.email.id_for_label }}">Email <span class="optional">(optional)</span></label>
+                {{ form.email }}
+            </div>
+        </div>
+        <div class="field-group">
+            <label for="{{ form.national_id.id_for_label }}">National ID / company registration number <span class="optional">(optional)</span></label>
+            {{ form.national_id }}
+        </div>
+
+        <div class="field-section-title">Classification</div>
+        <div class="field-group">
+            <label for="{{ form.customer_type.id_for_label }}">Customer type</label>
+            {{ form.customer_type }}
+        </div>
+
+        <div class="field-section-title">Location</div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.county.id_for_label }}">County</label>
+                {{ form.county }}
+                {% for e in form.county.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.address.id_for_label }}">Physical address <span class="optional">(optional)</span></label>
+                {{ form.address }}
+            </div>
+        </div>
+        <div class="field-group">
+            <label>Location <span class="optional">(optional)</span></label>
+            <div class="location-picker" id="location-picker">
+                <div class="location-picker-info">
+                    <svg class="pin-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span id="location-summary-text">No location selected</span>
+                </div>
+                <button type="button" class="btn btn-ghost" id="open-map-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                    Choose on map
+                </button>
+            </div>
+            <details class="manual-coords">
+                <summary>Enter coordinates manually instead</summary>
+                <div class="field-row" style="margin-top:12px;">
+                    <div class="field-group">
+                        <label for="{{ form.gps_latitude.id_for_label }}">GPS latitude</label>
+                        {{ form.gps_latitude }}
+                    </div>
+                    <div class="field-group">
+                        <label for="{{ form.gps_longitude.id_for_label }}">GPS longitude</label>
+                        {{ form.gps_longitude }}
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <div class="field-section-title">Sales</div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.referral_source.id_for_label }}">Referral source <span class="optional">(optional)</span></label>
+                {{ form.referral_source }}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.assigned_rep.id_for_label }}">Assigned sales representative <span class="optional">(optional)</span></label>
+                {{ form.assigned_rep }}
+                <div class="helptext">Defaults to you if left blank.</div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Register client</button>
+            <a href="{% url 'client_list' %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="map-modal-overlay" id="map-modal-overlay">
+    <div class="map-modal">
+        <div class="map-modal-header">
+            <h3>Choose a location</h3>
+            <button type="button" class="map-modal-close" id="map-modal-close" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="map-modal-search">
+            <svg class="search-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="map-search-input" placeholder="Search for an address or place in Kenya" autocomplete="off">
+            <div class="map-suggestions" id="map-suggestions"></div>
+        </div>
+
+        <div class="map-modal-actions">
+            <button type="button" class="btn btn-ghost" id="use-my-location-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                Use my current location
+            </button>
+            <span class="map-modal-hint">or click anywhere on the map, or drag the pin</span>
+        </div>
+
+        <div id="map-container" class="map-container"></div>
+
+        <div class="map-modal-footer">
+            <div class="map-picked-coords mono" id="map-picked-coords">No point selected yet</div>
+            <div class="map-modal-footer-actions">
+                <button type="button" class="btn btn-ghost" id="map-modal-cancel">Cancel</button>
+                <button type="button" class="btn btn-accent" id="map-modal-confirm" disabled>Confirm location</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+(function () {
+    const DEFAULT_CENTER = [-1.286389, 36.817223]; // Nairobi fallback
+
+    const overlay = document.getElementById('map-modal-overlay');
+    const openBtn = document.getElementById('open-map-btn');
+    const closeBtn = document.getElementById('map-modal-close');
+    const cancelBtn = document.getElementById('map-modal-cancel');
+    const confirmBtn = document.getElementById('map-modal-confirm');
+    const searchInput = document.getElementById('map-search-input');
+    const suggestionsBox = document.getElementById('map-suggestions');
+    const useLocationBtn = document.getElementById('use-my-location-btn');
+    const useLocationBtnHTML = useLocationBtn.innerHTML;
+    const pickedCoords = document.getElementById('map-picked-coords');
+    const summaryText = document.getElementById('location-summary-text');
+    const summaryBox = document.getElementById('location-picker');
+
+    const latField = document.getElementById('{{ form.gps_latitude.id_for_label }}');
+    const lngField = document.getElementById('{{ form.gps_longitude.id_for_label }}');
+    const addressField = document.getElementById('{{ form.address.id_for_label }}');
+    const countyField = document.getElementById('{{ form.county.id_for_label }}');
+
+    let map, marker, accuracyCircle, mapInitialized = false, pending = null, debounceTimer;
+
+    function openModal() {
+        overlay.classList.add('open');
+        // The modal is `display:none` until now, so its container has zero
+        // size the instant this runs. Leaflet needs a real, laid-out size
+        // before it can map pixel clicks to correct coordinates — a double
+        // rAF guarantees the browser has painted the modal first.
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                if (!mapInitialized) {
+                    initMap();
+                } else {
+                    map.invalidateSize();
+                }
+            });
+        });
+    }
+
+    function closeModal() {
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            if (watchTimeoutId) { clearTimeout(watchTimeoutId); watchTimeoutId = null; }
+            useLocationBtn.classList.remove('is-locating');
+            useLocationBtn.innerHTML = useLocationBtnHTML;
+        }
+        overlay.classList.remove('open');
+        suggestionsBox.innerHTML = '';
+        suggestionsBox.classList.remove('open');
+    }
+
+    function initMap() {
+        const hasExisting = latField.value && lngField.value;
+        map = L.map('map-container').setView(
+            hasExisting ? [parseFloat(latField.value), parseFloat(lngField.value)] : DEFAULT_CENTER,
+            hasExisting ? 15 : 7
+        );
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        if (hasExisting) {
+            setMarker(parseFloat(latField.value), parseFloat(lngField.value), false);
+        }
+
+        map.on('click', function (e) { setMarker(e.latlng.lat, e.latlng.lng, true); });
+        mapInitialized = true;
+
+        // Belt-and-suspenders: re-measure the container and re-anchor the
+        // view once more. Without this, tiles/clicks can stay misaligned
+        // if the modal's CSS transition/paint hasn't fully settled yet.
+        map.invalidateSize();
+        setTimeout(function () {
+            map.invalidateSize();
+            map.setView(map.getCenter(), map.getZoom());
+        }, 100);
+    }
+
+    function setMarker(lat, lng, reverseGeocode, accuracyMeters) {
+        if (marker) {
+            marker.setLatLng([lat, lng]);
+        } else {
+            marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+            marker.on('dragend', function () {
+                const pos = marker.getLatLng();
+                setMarker(pos.lat, pos.lng, true);
+            });
+        }
+
+        if (accuracyCircle) {
+            map.removeLayer(accuracyCircle);
+            accuracyCircle = null;
+        }
+        if (accuracyMeters) {
+            accuracyCircle = L.circle([lat, lng], {
+                radius: accuracyMeters,
+                color: '#665B30',
+                weight: 1,
+                fillColor: '#665B30',
+                fillOpacity: 0.08
+            }).addTo(map);
+        }
+
+        map.panTo([lat, lng]);
+        pending = { lat: lat, lng: lng };
+        pickedCoords.textContent = lat.toFixed(6) + ', ' + lng.toFixed(6) +
+            (accuracyMeters ? '  ·  accurate to ~' + Math.round(accuracyMeters) + ' m — drag the pin to fine-tune' : '');
+        confirmBtn.disabled = false;
+        if (reverseGeocode) {
+            searchInput.value = 'Looking up address…';
+            reverseGeocodeLatLng(lat, lng);
+        }
+    }
+
+    let geocodeRequestSeq = 0;
+
+    function reverseGeocodeLatLng(lat, lng) {
+        // Each click/drag kicks off its own fetch. If several fire in quick
+        // succession, responses can arrive out of order — without this
+        // guard, an older (stale) lookup can land after a newer one and
+        // overwrite the search box with the WRONG location. Only the
+        // latest request in flight is allowed to update the UI.
+        const requestId = ++geocodeRequestSeq;
+
+        fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + lat + '&lon=' + lng + '&zoom=18', {
+            headers: { 'Accept-Language': 'en' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (requestId !== geocodeRequestSeq) return; // a newer lookup superseded this one
+                if (!pending || pending.lat !== lat || pending.lng !== lng) return; // pin moved again meanwhile
+                if (data && data.display_name) {
+                    pending.display_name = data.display_name;
+                    pending.address = data.address || {};
+                    pickedCoords.title = data.display_name;
+                    searchInput.value = data.display_name;
+                } else {
+                    searchInput.value = '';
+                }
+            })
+            .catch(function () {
+                if (requestId !== geocodeRequestSeq) return;
+                searchInput.value = '';
+            });
+    }
+
+    function runSearch(q) {
+        fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&q=' + encodeURIComponent(q) +
+            '&countrycodes=ke&addressdetails=1&limit=6', { headers: { 'Accept-Language': 'en' } })
+            .then(function (r) { return r.json(); })
+            .then(renderSuggestions)
+            .catch(function () {});
+    }
+
+    function renderSuggestions(results) {
+        suggestionsBox.innerHTML = '';
+        if (!results || !results.length) {
+            suggestionsBox.classList.remove('open');
+            return;
+        }
+        results.forEach(function (r) {
+            const item = document.createElement('div');
+            item.className = 'map-suggestion-item';
+            item.textContent = r.display_name;
+            item.addEventListener('click', function () {
+                const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+                if (!mapInitialized) initMap();
+                map.setView([lat, lng], 16);
+                setMarker(lat, lng, false);
+                pending.display_name = r.display_name;
+                pending.address = r.address || {};
+                searchInput.value = r.display_name;
+                suggestionsBox.innerHTML = '';
+                suggestionsBox.classList.remove('open');
+            });
+            suggestionsBox.appendChild(item);
+        });
+        suggestionsBox.classList.add('open');
+    }
+
+    openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+
+    searchInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        const q = searchInput.value.trim();
+        if (q.length < 3) {
+            suggestionsBox.innerHTML = '';
+            suggestionsBox.classList.remove('open');
+            return;
+        }
+        debounceTimer = setTimeout(function () { runSearch(q); }, 350);
+    });
+
+    let watchId = null;
+    let watchTimeoutId = null;
+    let bestFix = null;
+
+    function finishWatch() {
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+        }
+        if (watchTimeoutId) {
+            clearTimeout(watchTimeoutId);
+            watchTimeoutId = null;
+        }
+        useLocationBtn.classList.remove('is-locating');
+        useLocationBtn.innerHTML = useLocationBtnHTML;
+        useLocationBtn.disabled = false;
+        if (bestFix) {
+            searchInput.value = 'Looking up address…';
+            reverseGeocodeLatLng(bestFix.lat, bestFix.lng);
+        }
+    }
+
+    useLocationBtn.addEventListener('click', function () {
+        // Tapping again while it's refining stops early and keeps the best fix so far.
+        if (watchId !== null) {
+            finishWatch();
+            return;
+        }
+        if (!navigator.geolocation) {
+            alert('Your browser does not support location detection.');
+            return;
+        }
+        if (!mapInitialized) initMap();
+        bestFix = null;
+        useLocationBtn.classList.add('is-locating');
+        useLocationBtn.innerHTML = 'Refining your location… (tap to stop)';
+
+        // A single getCurrentPosition() reading is often a rough first fix.
+        // watchPosition keeps listening and we only ever keep the most
+        // accurate reading seen, updating the pin live as it improves —
+        // this is what actually gets you closer to the exact spot.
+        watchId = navigator.geolocation.watchPosition(function (pos) {
+            const acc = pos.coords.accuracy;
+            if (!bestFix || acc <= bestFix.acc) {
+                bestFix = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: acc };
+                map.setView([bestFix.lat, bestFix.lng], 17);
+                setMarker(bestFix.lat, bestFix.lng, false, acc);
+            }
+            if (acc <= 15) finishWatch(); // good enough — stop automatically
+        }, function (err) {
+            finishWatch();
+            alert('Could not get your location: ' + err.message);
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+
+        watchTimeoutId = setTimeout(finishWatch, 10000); // stop refining after 10s regardless
+    });
+
+    confirmBtn.addEventListener('click', function () {
+        if (!pending) return;
+        latField.value = pending.lat.toFixed(6);
+        lngField.value = pending.lng.toFixed(6);
+
+        let summary = pending.lat.toFixed(6) + ', ' + pending.lng.toFixed(6);
+        if (pending.display_name) {
+            summary = pending.display_name;
+            const addr = pending.address || {};
+            if (!addressField.value) {
+                const streetBits = [addr.road, addr.suburb || addr.neighbourhood].filter(Boolean);
+                if (streetBits.length) addressField.value = streetBits.join(', ');
+            }
+            if (!countyField.value && addr.county) {
+                countyField.value = addr.county.replace(/ County$/i, '');
+            }
+        }
+        summaryText.textContent = summary;
+        summaryBox.classList.add('has-location');
+        closeModal();
+    });
+
+    // Pre-fill summary if the form re-rendered with existing values (e.g. validation error)
+    if (latField.value && lngField.value) {
+        summaryText.textContent = latField.value + ', ' + lngField.value;
+        summaryBox.classList.add('has-location');
+    }
+})();
+</script>
+
+{% endblock %}

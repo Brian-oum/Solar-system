@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "project/base.html" %}
 {% block title %}Sign up — Solar PMS{% endblock %}
 {% block content %}
 <div class="login-wrap">
@@ -19,6 +19,6 @@
         <button class="btn" type="submit">Sign up</button>
     </form>
 
-    <p class="auth-switch">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+    <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
 </div>
 {% endblock %}

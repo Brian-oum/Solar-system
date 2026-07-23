@@ -1,0 +1,45 @@
+{% extends "project/base.html" %}
+{% block title %}Schedule assessment — {{ customer.full_name }} — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 2 &middot; Site assessment</div>
+        <h1>{% if assessment %}Reschedule{% else %}Schedule{% endif %} site visit</h1>
+        <p class="desc">{{ customer.full_name }} &middot; <span class="mono">{{ project.project_id }}</span></p>
+    </div>
+    <a href="{% url 'client_detail' customer.customer_id %}" class="btn btn-ghost">&larr; Back to client</a>
+</div>
+
+<div class="card form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        <div class="field-group">
+            <label for="{{ form.scheduled_date.id_for_label }}">Visit date &amp; time</label>
+            {{ form.scheduled_date }}
+            {% for e in form.scheduled_date.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+        </div>
+
+        <div class="field-group">
+            <label for="{{ form.assigned_engineer.id_for_label }}">Assigned engineer <span class="optional">(optional)</span></label>
+            {{ form.assigned_engineer }}
+            <div class="helptext">Who's doing the site visit.</div>
+        </div>
+
+        <div class="field-group">
+            <label for="{{ form.scheduling_notes.id_for_label }}">Notes for the engineer <span class="optional">(optional)</span></label>
+            {{ form.scheduling_notes }}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">{% if assessment %}Save changes{% else %}Schedule assessment{% endif %}</button>
+            <a href="{% url 'client_detail' customer.customer_id %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
