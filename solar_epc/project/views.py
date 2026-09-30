@@ -225,12 +225,18 @@ def client_detail(request, customer_id):
         messages.error(request, "That client isn't assigned to you.")
         return redirect("client_list")
 
+    # The Phase 2+ views all operate on the customer's most recent project
+    # (customer.projects.order_by("-created_at").first()), so only that
+    # project gets working workflow links; older ones are shown read-only.
+    latest = customer.projects.order_by("-created_at").first()
     project_rows = [
         {
             "project": project,
             "assessment": getattr(project, "site_assessment", None),
             "quotation": getattr(project, "quotation", None),
             "actions": _project_actions(project),
+            "is_latest": latest is not None and project.pk == latest.pk,
+            "workflow": _project_workflow(project),
         }
         for project in customer.projects.all()
     ]
@@ -273,6 +279,87 @@ def _project_actions(project):
     if quotation.status in (Quotation.Status.DRAFT, Quotation.Status.REJECTED):
         actions.append({"label": "Edit quotation", "url_name": "quotation_edit", "primary": False})
     return actions
+
+
+def _project_workflow(project):
+    """
+    Every step of the site-assessment -> quotation pipeline for a project,
+    with its state and the links that are valid for it *right now*.
+
+    Unlike _project_actions (which only surfaces the single next step), this
+    keeps earlier steps reachable so a rep can go back and add or amend
+    something without hunting for a URL. Steps whose prerequisites aren't
+    met are returned as "locked" with no links, mirroring the guards the
+    views themselves enforce.
+
+    step["state"] is one of: done | current | todo | locked
+    (the first unlocked, unfinished step is promoted to "current").
+    """
+    assessment = getattr(project, "site_assessment", None)
+    recommendation = getattr(assessment, "recommendation", None) if assessment else None
+    quotation = getattr(project, "quotation", None)
+
+    has_assessment = assessment is not None
+    survey_done = has_assessment and assessment.status == SiteAssessment.Status.COMPLETED
+    rec_reviewed = bool(recommendation and recommendation.is_reviewed)
+
+    # 1. Site visit -----------------------------------------------------
+    if not has_assessment:
+        visit = {"state": "todo", "summary": "Book a date to inspect the site.",
+                 "links": [{"label": "Schedule visit", "url_name": "site_assessment_schedule"}]}
+    elif not survey_done:
+        visit = {"state": "done", "summary": "Visit scheduled.",
+                 "links": [{"label": "Reschedule visit", "url_name": "site_assessment_schedule"}]}
+    else:
+        # Rescheduling a completed assessment would knock it back to
+        # "Scheduled", so no link once the survey has been submitted.
+        visit = {"state": "done", "summary": "Visit completed.", "links": []}
+    visit.update(key="visit", title="Site visit", date=None)
+
+    # 2. Survey ---------------------------------------------------------
+    if not has_assessment:
+        survey = {"state": "locked", "summary": "Unlocks once a site visit is scheduled.", "links": [], "date": None}
+    elif not survey_done:
+        survey = {"state": "todo", "summary": "Record what was found on-site.", "date": None,
+                  "links": [{"label": "Continue survey", "url_name": "site_assessment_survey"}]}
+    else:
+        survey = {"state": "done", "summary": "Survey completed.", "date": assessment.completed_at,
+                  "links": [{"label": "View / edit survey", "url_name": "site_assessment_survey"}]}
+    survey.update(key="survey", title="Site survey")
+
+    # 3. Recommendation -------------------------------------------------
+    if not survey_done:
+        rec = {"state": "locked", "summary": "Unlocks after the survey is completed.", "links": [], "date": None}
+    elif not rec_reviewed:
+        rec = {"state": "todo", "summary": "Waiting for engineer sign-off.", "date": None,
+               "links": [{"label": "Review recommendation", "url_name": "site_assessment_recommendation"}]}
+    else:
+        rec = {"state": "done", "summary": "Approved by engineer.", "date": recommendation.reviewed_at,
+               "links": [{"label": "View recommendation", "url_name": "site_assessment_recommendation"}]}
+    rec.update(key="recommendation", title="System recommendation")
+
+    # 4. Quotation ------------------------------------------------------
+    if quotation is not None:
+        links = [{"label": "View quotation", "url_name": "quotation_detail"}]
+        if quotation.status in (Quotation.Status.DRAFT, Quotation.Status.REJECTED):
+            links.append({"label": "Edit quotation", "url_name": "quotation_edit"})
+        quote = {"state": "done", "date": None, "links": links,
+                 "summary": f"{quotation.quotation_id} \u00b7 {quotation.get_status_display()}"}
+    elif rec_reviewed:
+        quote = {"state": "todo", "summary": "Ready to be created.", "date": None,
+                 "links": [{"label": "Create quotation", "url_name": "quotation_edit"}]}
+    else:
+        quote = {"state": "locked", "summary": "Unlocks after the recommendation is approved.", "links": [], "date": None}
+    quote.update(key="quotation", title="Quotation")
+
+    steps = [visit, survey, rec, quote]
+    for number, step in enumerate(steps, start=1):
+        step["number"] = number
+    for step in steps:
+        if step["state"] == "todo":
+            step["state"] = "current"
+            break
+    return steps
 
 
 def _get_customer_for_user(request, customer_id):
