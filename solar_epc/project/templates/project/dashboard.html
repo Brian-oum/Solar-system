@@ -8,108 +8,380 @@
         <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
         <p class="desc">Here's where your book of business stands right now.</p>
     </div>
-    <a href="{% url 'client_register' %}" class="btn btn-accent">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        Register client
-    </a>
+    <div class="dash-head-actions">
+        <div class="dash-live" id="dash-live" role="status" aria-live="polite">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="dash-live-text">Live</span>
+            <button type="button" class="refresh" id="dash-refresh" aria-label="Refresh now" title="Refresh now">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+        </div>
+        <a href="{% url 'client_register' %}" class="btn btn-accent">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Register client
+        </a>
+    </div>
 </div>
 
-<div class="stat-grid">
-    <div class="stat-card">
-        <div class="label">Total clients</div>
-        <div class="value mono">{{ total_customers }}</div>
-    </div>
-    <div class="stat-card">
-        <div class="label">New leads this month</div>
-        <div class="value mono">{{ leads_this_month }}</div>
-    </div>
-    <div class="stat-card">
-        <div class="label">Active projects</div>
-        <div class="value mono">{{ active_projects }}</div>
-    </div>
-    {% if user.is_admin_role %}
-    <div class="stat-card">
-        <div class="label">Active catalog items</div>
-        <div class="value mono">{{ catalog_total_active }}</div>
-    </div>
-    {% endif %}
+<div class="dash-banner" id="dash-banner" role="alert"></div>
+<noscript><div class="dash-banner show">The dashboard needs JavaScript to display its charts and live figures.</div></noscript>
+
+{# ---- headline numbers #}
+<div class="dash-kpis" id="dash-kpis" aria-label="Key figures"></div>
+
+{# ---- recent clients + what needs doing #}
+<div class="dash-grid g-21">
+    <section class="card dash-card" aria-labelledby="h-clients">
+        <div class="dash-card-head">
+            <h2 id="h-clients">Recently registered clients</h2>
+            <a href="{% url 'client_list' %}">View all &rarr;</a>
+        </div>
+        <div id="dash-clients"></div>
+    </section>
+    <section class="card dash-card" aria-labelledby="h-attn">
+        <div class="dash-card-head"><h2 id="h-attn">Needs attention</h2></div>
+        <div id="dash-attention"></div>
+    </section>
 </div>
 
-<div class="card">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-        <h2 style="font-size:15px;">Recently registered clients</h2>
-        <a href="{% url 'client_list' %}" style="font-size:13px; font-weight:600; color:var(--muted); text-decoration:none;">View all &rarr;</a>
-    </div>
-
-    {% if recent_customers %}
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Customer</th>
-                <th>Type</th>
-                <th>County</th>
-                <th>Registered</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in recent_customers %}
-            <tr onclick="window.location='{% url 'client_detail' c.customer_id %}'" style="cursor:pointer;">
-                <td>
-                    <div style="font-weight:600;">{{ c.full_name }}</div>
-                    <div class="mono" style="font-size:11.5px; color:var(--muted);">{{ c.customer_id }}</div>
-                </td>
-                <td><span class="type-badge">{{ c.get_customer_type_display }}</span></td>
-                <td>{{ c.county }}</td>
-                <td>{{ c.created_at|date:"d M Y" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-        <h3>No clients yet</h3>
-        <p>Register your first client to kick off a project.</p>
-        <a href="{% url 'client_register' %}" class="btn btn-accent" style="margin-top:14px;">Register client</a>
-    </div>
-    {% endif %}
+{# ---- trends #}
+<div class="dash-grid g-2">
+    <section class="card dash-card" aria-labelledby="h-leads">
+        <div class="dash-card-head"><h2 id="h-leads">Leads &amp; wins</h2><span class="hint">Last 6 months</span></div>
+        <div class="dash-chart" id="dash-chart-leads"></div>
+        <div class="dash-legend" id="dash-legend-leads"></div>
+    </section>
+    <section class="card dash-card" aria-labelledby="h-mix">
+        <div class="dash-card-head"><h2 id="h-mix">Client mix</h2><span class="hint">By classification</span></div>
+        <div id="dash-mix"></div>
+    </section>
 </div>
 
 {% if user.is_admin_role %}
-<div class="card">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-        <h2 style="font-size:15px;">Low stock in the catalog</h2>
-        <a href="{% url 'catalog_home' %}" style="font-size:13px; font-weight:600; color:var(--muted); text-decoration:none;">Manage catalog &rarr;</a>
+<section class="card dash-card" aria-labelledby="h-team">
+    <div class="dash-card-head">
+        <h2 id="h-team">Team workload</h2>
+        <a href="{% url 'catalog_home' %}">Manage catalog &rarr;</a>
     </div>
-
-    {% if low_stock_items %}
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Item</th>
-                <th>Type</th>
-                <th>Stock remaining</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in low_stock_items %}
-            <tr onclick="window.location='{% url 'equipment_edit' row.kind row.item.pk %}'" style="cursor:pointer;">
-                <td>
-                    <div style="font-weight:600;">{{ row.item.name }}</div>
-                    <div class="mono" style="font-size:11.5px; color:var(--muted);">{{ row.item.brand|default:"" }}</div>
-                </td>
-                <td><span class="type-badge">{{ row.singular|capfirst }}</span></td>
-                <td class="mono">{{ row.item.stock_quantity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-        <h3>Stock looks healthy</h3>
-        <p>No active catalog items are running low right now.</p>
-    </div>
-    {% endif %}
-</div>
+    <div id="dash-team"></div>
+</section>
 {% endif %}
+
+{{ dashboard_data|json_script:"dash-data" }}
+
+<script>
+(function () {
+    'use strict';
+    // The page ships with its data embedded (instant first paint), then keeps
+    // itself fresh by polling the JSON feed. Everything is drawn with
+    // textContent / SVG attributes only — never innerHTML with data.
+    var DATA_URL = "{% url 'dashboard_data' %}";
+    var LOGIN_URL = "{% url 'login' %}";
+    var POLL_MS = 30000, MAX_BACKOFF_MS = 300000;
+
+    var data = JSON.parse(document.getElementById('dash-data').textContent);
+    var lastOk = Date.now(), fails = 0, timer = null, inflight = false, dead = false;
+    var cache = {};
+
+    // ---------------------------------------------------------------- helpers
+    function $(id) { return document.getElementById(id); }
+    function el(tag, cls, text) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined && text !== null) n.textContent = text;
+        return n;
+    }
+    var NS = 'http://www.w3.org/2000/svg';
+    function svg(tag, attrs, text) {
+        var n = document.createElementNS(NS, tag);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (text !== undefined) n.textContent = text;
+        return n;
+    }
+    function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); return n; }
+    function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+    var nf = new Intl.NumberFormat('en-KE', { maximumFractionDigits: 0 });
+    function kes(n) { return 'KES ' + nf.format(n || 0); }
+    function compact(n) {
+        n = n || 0; var a = Math.abs(n);
+        if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+        if (a >= 1e3) return Math.round(n / 1e3) + 'K';
+        return String(Math.round(n));
+    }
+    function ago(iso) {
+        var s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+        if (s < 45) return 'just now';
+        if (s < 3600) return Math.round(s / 60) + ' min ago';
+        if (s < 86400) return Math.round(s / 3600) + ' h ago';
+        if (s < 7 * 86400) return Math.round(s / 86400) + ' d ago';
+        return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    }
+    function agoNode(iso) { var s = el('span', null, ago(iso)); s.setAttribute('data-ago', iso); return s; }
+    function linkOrText(text, url, cls) {
+        if (!url) return el('span', cls, text);
+        var a = el('a', cls, text); a.href = url; return a;
+    }
+    function empty(host, title, text) {
+        clear(host);
+        var d = el('div', 'dash-empty'); d.appendChild(el('strong', null, title));
+        if (text) d.appendChild(document.createTextNode(text));
+        host.appendChild(d);
+    }
+    function table(host, heads, rows) {
+        // heads: [{text, num}], rows: array of arrays of nodes (or {node, num})
+        clear(host);
+        var wrap = el('div', 'dash-table-wrap'), t = el('table', 'data'), thead = el('thead'), tr = el('tr');
+        heads.forEach(function (h) { var th = el('th', h.num ? 'num' : null, h.text); tr.appendChild(th); });
+        thead.appendChild(tr); t.appendChild(thead);
+        var tb = el('tbody');
+        rows.forEach(function (cells) {
+            var r = el('tr');
+            cells.forEach(function (c, i) {
+                var td = el('td', heads[i] && heads[i].num ? 'num' : null);
+                td.appendChild(c); r.appendChild(td);
+            });
+            tb.appendChild(r);
+        });
+        t.appendChild(tb); wrap.appendChild(t); host.appendChild(wrap);
+    }
+    function twoLine(main, sub, url) {
+        var d = el('div'); d.appendChild(linkOrText(main, url, 'dash-link'));
+        if (sub) d.appendChild(el('div', 'dash-sub', sub));
+        return d;
+    }
+
+    // ------------------------------------------------------------------ KPIs
+    function delta(pct, previous, value) {
+        var s = el('span', 'dash-delta');
+        if (pct === null || pct === undefined) {
+            if (!previous && value > 0) s.textContent = 'new';
+            else return null;
+        } else if (pct > 0) { s.className += ' up'; s.textContent = '▲ ' + pct + '%'; }
+        else if (pct < 0) { s.className += ' down'; s.textContent = '▼ ' + Math.abs(pct) + '%'; }
+        else s.textContent = '● 0%';
+        return s;
+    }
+    function renderKpis(k) {
+        var host = clear($('dash-kpis'));
+        var cards = [
+            { label: 'Total clients', value: nf.format(k.clients.value),
+              sub: k.clients.new_this_month ? '+' + k.clients.new_this_month + ' this month' : 'None new this month' },
+            { label: 'New leads this month', value: nf.format(k.leads.value),
+              delta: delta(k.leads.delta_pct, k.leads.previous, k.leads.value), sub: 'vs ' + k.leads.previous + ' last month' },
+            { label: 'Active projects', value: nf.format(k.active_projects.value),
+              sub: k.active_projects.needs_action ? k.active_projects.needs_action + ' need action' : 'Nothing waiting on you' },
+            { label: 'Awaiting response', value: 'KES ' + compact(k.awaiting.value),
+              title: kes(k.awaiting.value), sub: plural(k.awaiting.count, 'quotation') + ' sent' }
+        ];
+        cards.forEach(function (c) {
+            var card = el('div', 'stat-card dash-kpi');
+            card.appendChild(el('div', 'label', c.label));
+            var v = el('div', 'value mono', c.value); if (c.title) v.title = c.title;
+            card.appendChild(v);
+            var sub = el('div', 'sub');
+            if (c.delta) sub.appendChild(c.delta);
+            sub.appendChild(document.createTextNode(c.sub));
+            card.appendChild(sub);
+            host.appendChild(card);
+        });
+    }
+
+    // ------------------------------------------------------------- attention
+    function renderAttention(items) {
+        var host = $('dash-attention');
+        if (!items.length) return empty(host, 'All caught up', 'Nothing is overdue or waiting on you right now.');
+        clear(host);
+        var ul = el('ul', 'dash-attn');
+        items.forEach(function (it) {
+            var li = el('li'), a = el('a', it.tone); a.href = it.url;
+            a.appendChild(el('span', 'cnt', String(it.count)));
+            a.appendChild(el('span', null, it.text));
+            li.appendChild(a); ul.appendChild(li);
+        });
+        host.appendChild(ul);
+    }
+
+    // ----------------------------------------------------------- bar charts
+    function scale(maxV, integer) {
+        var raw = Math.max(maxV, 1) / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+        var step = [1, 2, 2.5, 5, 10].map(function (m) { return m * p; }).filter(function (s) { return s >= raw; })[0];
+        if (integer) step = Math.max(1, Math.ceil(step));
+        return { step: step, max: step * 4 };
+    }
+    function barChart(host, labels, series, fmt, integer) {
+        var W = 520, H = 230, pl = 34, pr = 6, pt = 14, pb = 22, iw = W - pl - pr, ih = H - pt - pb;
+        var allMax = Math.max.apply(null, [0].concat.apply([], series.map(function (s) { return s.values; })));
+        var sc = scale(allMax, integer);
+        var root = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img',
+                                'aria-label': series.map(function (s) { return s.name; }).join(' and ') + ' by month' });
+        for (var i = 0; i <= 4; i++) {
+            var y = pt + ih - ih * i / 4;
+            root.appendChild(svg('line', { x1: pl, x2: W - pr, y1: y, y2: y, 'class': 'grid' }));
+            root.appendChild(svg('text', { x: pl - 6, y: y + 3, 'text-anchor': 'end' }, compact(sc.step * i)));
+        }
+        var n = labels.length, gw = iw / n, gap = 3;
+        var bw = Math.min(24, (gw * 0.72 - gap * (series.length - 1)) / series.length);
+        labels.forEach(function (lab, li) {
+            var groupW = bw * series.length + gap * (series.length - 1), x0 = pl + gw * li + (gw - groupW) / 2;
+            series.forEach(function (s, si) {
+                var v = s.values[li] || 0, h = ih * v / sc.max, x = x0 + si * (bw + gap);
+                var r = svg('rect', { 'class': 'bar', x: x, y: pt + ih - h, width: bw, height: Math.max(h, v > 0 ? 1.5 : 0), rx: 3, fill: s.color });
+                r.appendChild(svg('title', {}, lab + ' · ' + s.name + ': ' + fmt(v)));
+                root.appendChild(r);
+                if (v > 0) root.appendChild(svg('text', { x: x + bw / 2, y: pt + ih - h - 4, 'text-anchor': 'middle' }, integer ? String(v) : compact(v)));
+            });
+            root.appendChild(svg('text', { x: pl + gw * li + gw / 2, y: H - 6, 'text-anchor': 'middle' }, lab));
+        });
+        clear(host).appendChild(root);
+    }
+    function legend(host, items) {
+        clear(host);
+        items.forEach(function (it) {
+            var s = el('span'), i = el('i'); i.style.background = it.color;
+            s.appendChild(i); s.appendChild(document.createTextNode(it.name)); host.appendChild(s);
+        });
+    }
+    var TEAL = '#0A7A68', MAROON = '#6D3038', SLATE = '#3A5A78';
+    function renderMonthly(m) {
+        var anyLeads = m.leads.concat(m.won_count).some(function (v) { return v > 0; });
+        var lh = $('dash-chart-leads');
+        if (!anyLeads) { empty(lh, 'No activity yet', 'Leads and wins will appear here.'); clear($('dash-legend-leads')); return; }
+        barChart(lh, m.labels, [{ name: 'New leads', color: TEAL, values: m.leads }, { name: 'Quotes won', color: MAROON, values: m.won_count }],
+                 function (v) { return String(v); }, true);
+        legend($('dash-legend-leads'), [{ name: 'New leads', color: TEAL }, { name: 'Quotes won', color: MAROON }]);
+    }
+
+    // ----------------------------------------------------------------- donut
+    function renderMix(items) {
+        var host = $('dash-mix'), total = items.reduce(function (a, i) { return a + i.count; }, 0);
+        if (!total) return empty(host, 'No clients yet', 'Register a client to see the mix.');
+        var colors = { residential: TEAL, commercial: MAROON, industrial: SLATE };
+        var R = 52, C = 2 * Math.PI * R, offset = 0;
+        var root = svg('svg', { viewBox: '0 0 140 140', role: 'img', 'aria-label': 'Clients by classification', 'class': 'dash-donut' });
+        root.appendChild(svg('circle', { cx: 70, cy: 70, r: R, fill: 'none', stroke: '#EAF0EE', 'stroke-width': 18 }));
+        items.forEach(function (it) {
+            if (!it.count) return;
+            var len = it.count / total * C, seg = svg('circle', {
+                cx: 70, cy: 70, r: R, fill: 'none', stroke: colors[it.key] || TEAL, 'stroke-width': 18,
+                'stroke-dasharray': Math.max(len - (items.filter(function (x) { return x.count; }).length > 1 ? 1.5 : 0), 0.1) + ' ' + C,
+                'stroke-dashoffset': -offset, transform: 'rotate(-90 70 70)'
+            });
+            seg.appendChild(svg('title', {}, it.label + ': ' + it.count));
+            root.appendChild(seg); offset += len;
+        });
+        var t = svg('text', { x: 70, y: 72, 'class': 'total' }, String(total)); root.appendChild(t);
+        root.appendChild(svg('text', { x: 70, y: 88, 'class': 'cap' }, plural(total, 'client').replace(/^\d+ /, '')));
+        clear(host);
+        var wrap = el('div', 'dash-donut-wrap dash-chart'), ul = el('ul', 'dash-donut-legend');
+        items.forEach(function (it) {
+            var li = el('li'), i = el('i'); i.style.background = colors[it.key] || TEAL;
+            li.appendChild(i); li.appendChild(el('span', null, it.label));
+            li.appendChild(el('span', 'n', String(it.count)));
+            li.appendChild(el('span', 'pct', Math.round(it.count / total * 100) + '%'));
+            ul.appendChild(li);
+        });
+        wrap.appendChild(root); wrap.appendChild(ul); host.appendChild(wrap);
+    }
+
+    // ---------------------------------------------------------------- tables
+    function renderClients(rows) {
+        var host = $('dash-clients');
+        if (!rows.length) {
+            empty(host, 'No clients yet', 'Register your first client to kick off a project.');
+            var a = el('a', 'btn btn-accent', 'Register client'); a.href = "{% url 'client_register' %}"; a.style.marginTop = '14px';
+            host.firstChild.appendChild(document.createElement('br')); host.firstChild.appendChild(a);
+            return;
+        }
+        table(host, [{ text: 'Customer' }, { text: 'Type' }, { text: 'County' }, { text: 'Registered' }], rows.map(function (r) {
+            return [twoLine(r.name, r.customer_id, r.url), el('span', 'type-badge', r.type), el('span', null, r.county), agoNode(r.created_at)];
+        }));
+    }
+    function renderTeam(rows) {
+        var host = $('dash-team'); if (!host) return;
+        if (!rows || !rows.length) return empty(host, 'No site engineers yet', 'Active engineers and their workload appear here.');
+        table(host, [{ text: 'Engineer' }, { text: 'Clients', num: true }, { text: 'Active projects', num: true },
+                     { text: 'Quotes won', num: true }, { text: 'Value won', num: true }], rows.map(function (r) {
+            return [el('strong', null, r.name), el('span', null, String(r.clients)), el('span', null, String(r.active)),
+                    el('span', null, String(r.won)), el('span', null, kes(r.won_value))];
+        }));
+    }
+
+    // ---------------------------------------------------------------- render
+    var sections = [
+        ['kpis', function (d) { return d.kpis; }, renderKpis],
+        ['attention', function (d) { return d.attention; }, renderAttention],
+        ['monthly', function (d) { return d.charts.monthly; }, renderMonthly],
+        ['mix', function (d) { return d.charts.customer_mix; }, renderMix],
+        ['clients', function (d) { return d.recent_clients; }, renderClients],
+        ['team', function (d) { return d.team; }, renderTeam]
+    ];
+    function render() {
+        // Only redraw sections whose data changed, so a quiet refresh is invisible.
+        sections.forEach(function (s) {
+            var v = s[1](data), j = JSON.stringify(v);
+            if (cache[s[0]] !== j) { cache[s[0]] = j; s[2](v); }
+        });
+        tickAgo();
+    }
+    function tickAgo() {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-ago]'), function (n) { n.textContent = ago(n.getAttribute('data-ago')); });
+    }
+
+    // ------------------------------------------------------- live refreshing
+    var live = $('dash-live'), liveText = $('dash-live-text'), banner = $('dash-banner');
+    function setStatus() {
+        if (dead) return;
+        var secs = Math.round((Date.now() - lastOk) / 1000), txt, cls = '';
+        if (fails > 0) { txt = 'Offline — retrying'; cls = 'offline'; }
+        else {
+            txt = 'Live · updated ' + (secs < 5 ? 'just now' : secs < 60 ? secs + 's ago' : Math.round(secs / 60) + ' min ago');
+            if (secs > POLL_MS * 2 / 1000) cls = 'stale';
+        }
+        liveText.textContent = txt;
+        live.className = 'dash-live ' + cls + (inflight ? ' loading' : '');
+    }
+    function expired() {
+        dead = true; clearTimeout(timer);
+        live.className = 'dash-live expired'; liveText.textContent = 'Paused';
+        clear(banner); banner.appendChild(document.createTextNode('Your session has expired, so the dashboard stopped updating. '));
+        var a = el('a', null, 'Sign in again'); a.href = LOGIN_URL; banner.appendChild(a);
+        banner.className = 'dash-banner show';
+    }
+    function load() {
+        if (inflight || dead) return Promise.resolve();
+        inflight = true; setStatus();
+        return fetch(DATA_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (res) {
+                if (res.redirected || res.status === 401 || res.status === 403) { expired(); return null; }
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                var ct = res.headers.get('content-type') || '';
+                if (ct.indexOf('application/json') === -1) throw new Error('Unexpected response');
+                return res.json();
+            })
+            .then(function (fresh) {
+                if (!fresh) return;
+                data = fresh; fails = 0; lastOk = Date.now(); render();
+            })
+            .catch(function () { fails++; })
+            .then(function () { inflight = false; setStatus(); });
+    }
+    function schedule() {
+        clearTimeout(timer);
+        var delay = Math.min(POLL_MS * Math.pow(2, fails), MAX_BACKOFF_MS);
+        timer = setTimeout(function () {
+            (document.hidden ? Promise.resolve() : load()).then(schedule);
+        }, delay);
+    }
+    $('dash-refresh').addEventListener('click', function () { load(); });
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && !dead && Date.now() - lastOk > POLL_MS) load();
+    });
+    window.addEventListener('online', function () { if (!dead) load(); });
+    setInterval(function () { setStatus(); tickAgo(); }, 5000);
+
+    render(); setStatus(); schedule();
+})();
+</script>
 
 {% endblock %}

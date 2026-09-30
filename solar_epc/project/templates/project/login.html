@@ -1,31 +1,33 @@
 {% extends "project/base.html" %}
 {% block title %}Log in — Solar PMS{% endblock %}
-{% block content %}
-<div class="login-wrap">
-    <h1>Solar PMS</h1>
-    <p>Sign in to continue.</p>
+{% block auth_content %}
+<div class="card">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:22px;">
+        <span class="mark" style="width:32px;height:32px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;">&#9728;</span>
+        <div>
+            <h1 style="font-size:18px;">Solar PMS</h1>
+            <div style="font-size:12px;color:var(--muted);">EPC Operations</div>
+        </div>
+    </div>
 
-    {% if form.non_field_errors %}
-        <ul class="messages">
-            {% for error in form.non_field_errors %}
-                <li class="message error">{{ error }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-
-    <form method="post">
+    <form method="post" novalidate>
         {% csrf_token %}
-        <p>
+        {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+        <div class="field-group">
             <label for="{{ form.username.id_for_label }}">Username</label>
             {{ form.username }}
-        </p>
-        <p>
+        </div>
+        <div class="field-group">
             <label for="{{ form.password.id_for_label }}">Password</label>
             {{ form.password }}
-        </p>
-        <button class="btn" type="submit">Log in</button>
+        </div>
+        <button type="submit" class="btn btn-accent" style="width:100%; justify-content:center;">Log in</button>
     </form>
 
-    <p class="auth-switch">Don't have an account? <a href="{% url 'register' %}">Sign up</a></p>
+    <p style="text-align:center; font-size:13px; color:var(--muted); margin-top:18px;">
+        New site engineer? <a href="{% url 'register' %}" style="color:var(--ink); font-weight:600;">Create an account</a>
+    </p>
 </div>
 {% endblock %}

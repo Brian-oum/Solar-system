@@ -21,26 +21,148 @@
 </div>
 
 
+<style>
+    /* ------------------------------------------------------------------
+       Devices step — grouped by category. Kept local so it works with
+       whatever base styles are loaded.
+       ------------------------------------------------------------------ */
+    .load-toolbar { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; margin-bottom:.6rem; }
+    .load-toolbar[hidden] { display:none; }
+    .load-toolbar-actions { display:flex; gap:.35rem; }
+    .load-filter { display:flex; align-items:center; gap:.5rem; font-size:.85rem; cursor:pointer; }
+
+    .load-group { border:1px solid rgba(128,128,128,.3); border-radius:8px; }
+    #load-groups:not([hidden]) { display:flex; flex-direction:column; gap:.5rem; }
+    .load-extra { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; font-size:.85rem; }
+    .load-extra[hidden] { display:none; }
+    .load-extra select { padding:.3rem .4rem; font-size:.85rem; }
+    .load-group.has-items { border-color:rgba(245,166,35,.6); }
+    .load-group > summary { list-style:none; display:flex; align-items:center; gap:.6rem; padding:.65rem .85rem; cursor:pointer; font-weight:600; font-size:.9rem; border-radius:8px; user-select:none; }
+    .load-group > summary::-webkit-details-marker { display:none; }
+    .load-group > summary:hover { background:rgba(128,128,128,.08); }
+    .load-group > summary:focus-visible { outline:2px solid #f5a623; outline-offset:-2px; }
+    .load-group[open] > summary { border-bottom:1px solid rgba(128,128,128,.25); border-radius:8px 8px 0 0; }
+    .load-group-chevron { flex:none; width:.45rem; height:.45rem; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); opacity:.6; transition:transform .15s; }
+    .load-group[open] .load-group-chevron { transform:rotate(45deg); }
+    .load-group-meta { margin-left:auto; font-size:.78rem; font-weight:400; opacity:.7; white-space:nowrap; }
+    .load-group.has-items .load-group-meta { opacity:1; font-weight:600; padding:.1rem .55rem; border-radius:999px; background:rgba(245,166,35,.2); }
+    .load-group-body { padding:.35rem .5rem .6rem; }
+    .load-group-foot { padding:.5rem .35rem 0; }
+    #load-groups.only-added .load-group.load-group-empty { display:none; }
+    #load-groups.only-added .load-row.load-empty { display:none; }
+
+    .load-table-wrap { overflow-x:auto; }
+    .load-table { width:100%; min-width:720px; table-layout:fixed; border-collapse:collapse; font-size:.85rem; }
+    .load-table th { text-align:left; font-weight:600; font-size:.75rem; padding:.4rem .35rem; white-space:nowrap; border-bottom:1px solid rgba(128,128,128,.3); }
+    .load-table th:nth-child(2) { width:4.75rem; }
+    .load-table th:nth-child(3) { width:6rem; }
+    .load-table th:nth-child(4) { width:5rem; }
+    .load-table th:nth-child(5) { width:5rem; }
+    .load-table th:nth-child(n+6) { width:4.5rem; text-align:center; }
+    .load-table td { padding:.35rem; vertical-align:top; border-bottom:1px solid rgba(128,128,128,.15); }
+    .load-table td input[type="text"],
+    .load-table td select { width:100%; min-width:0; padding:.3rem .4rem; font-size:.85rem; }
+    .load-table td input[type="number"] { width:100%; box-sizing:border-box; padding:.3rem .4rem; font-size:.85rem; }
+    .load-table .load-sub { display:flex; gap:.35rem; margin-top:.25rem; }
+    .load-table .load-sub select { flex:0 0 46%; }
+    .load-table .load-sub input { flex:1; }
+    .load-group .load-sub select { display:none; } /* the group already says the category */
+    .load-table .load-check { text-align:center; padding-top:.6rem; }
+    .load-table .errorlist { margin:.2rem 0 0; font-size:.75rem; }
+    .load-row.has-qty { background:rgba(245,166,35,.08); }
+    .load-remove-btn { width:1.6rem; height:1.6rem; padding:0; line-height:1; font-size:1.05rem; color:inherit; background:transparent; border:1px solid rgba(128,128,128,.4); border-radius:4px; cursor:pointer; }
+    .load-remove-btn:hover { background:rgba(220,60,60,.12); border-color:rgba(220,60,60,.6); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .load-group-chevron { transition:none; }
+    }
+
+    /* ------------------------------------------------------------------
+       Site readiness — sticky green sidebar on the right.
+       ------------------------------------------------------------------ */
+    .survey-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:1.25rem; align-items:start; }
+    .survey-layout > .survey-main { min-width:0; }
+    .survey-layout > .readiness-panel {
+        position:sticky; top:1rem; align-self:start;
+        width:auto; max-width:none; margin:0; padding:1.15rem 1.15rem 1.25rem;
+        background:linear-gradient(165deg, #1f7a4d 0%, #155c3a 100%);
+        color:#f2fbf5; border:none; border-radius:12px;
+        box-shadow:0 6px 20px rgba(21,92,58,.28);
+    }
+    .survey-layout .readiness-panel .readiness-title,
+    .survey-layout .readiness-panel .readiness-value,
+    .survey-layout .readiness-panel .readiness-value-line,
+    .survey-layout .readiness-panel .readiness-estimate-value,
+    .survey-layout .readiness-panel #readiness-pct { color:#fff; }
+    .survey-layout .readiness-panel .readiness-sub,
+    .survey-layout .readiness-panel .readiness-label,
+    .survey-layout .readiness-panel .readiness-estimate-label { color:rgba(242,251,245,.75); }
+    .survey-layout .readiness-panel .ring-bg { stroke:rgba(255,255,255,.22); }
+    .survey-layout .readiness-panel .ring-fg { stroke:#ffd166; }
+    .survey-layout .readiness-panel .readiness-bar { background:rgba(255,255,255,.22); }
+    .survey-layout .readiness-panel .readiness-bar-fill { background:#ffd166; }
+    .survey-layout .readiness-panel .sun-dots { color:#ffd166; }
+    .survey-layout .readiness-panel .readiness-estimate { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); border-radius:8px; }
+
+    @media (max-width: 900px) {
+        .survey-layout { grid-template-columns:minmax(0,1fr); }
+        .survey-layout > .readiness-panel { position:static; }
+    }
+    /* ------------------------------------------------------------------
+       Step tracker — numbered stations. The connectors sit *between* the
+       circles, so nothing runs through a label, and the sun marker glides
+       to whichever station is current.
+       ------------------------------------------------------------------ */
+    #sun-stepper { position:relative; height:auto; min-height:0; margin:0 0 1.5rem; padding:.25rem 0 1.25rem; border-bottom:1px solid rgba(128,128,128,.2); }
+    #sun-stepper .sun-stepper-track { display:none; }
+    #sun-stepper .sun-stepper-nodes { position:relative; z-index:1; display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); width:100%; margin:0; padding:0; counter-reset:sun-step; }
+
+    #sun-stepper .sun-node { position:relative; display:flex; flex-direction:column; align-items:center; gap:.55rem; margin:0; padding:0 .15rem; border:0; background:none; color:inherit; font:inherit; cursor:pointer; counter-increment:sun-step; -webkit-tap-highlight-color:transparent; }
+    #sun-stepper .sun-node:focus { outline:none; }
+    #sun-stepper .sun-node::after,
+    #sun-stepper .node-dot::after,
+    #sun-stepper .node-label::before,
+    #sun-stepper .node-label::after { content:none; }
+
+    /* connector: from the previous circle's edge to this circle's edge */
+    #sun-stepper .sun-node::before { content:""; position:absolute; top:calc(.875rem - 1px); left:calc(-50% + 1.375rem); width:calc(100% - 2.75rem); height:2px; border-radius:2px; background:rgba(128,128,128,.28); transition:background-color .35s; }
+    #sun-stepper .sun-node:first-child::before { display:none; }
+    #sun-stepper .sun-node.done::before,
+    #sun-stepper .sun-node.current::before { background:#1f7a4d; }
+
+    #sun-stepper .node-dot { position:relative; z-index:1; display:grid; place-items:center; flex:none; box-sizing:border-box; width:1.75rem; height:1.75rem; margin:0; border-radius:50%; border:2px solid rgba(128,128,128,.4); background:transparent; color:rgba(128,128,128,.95); font-size:.75rem; font-weight:600; line-height:1; transition:background-color .3s, border-color .3s, color .3s, transform .2s; }
+    #sun-stepper .node-dot::before { content:counter(sun-step); }
+    #sun-stepper .sun-node:hover .node-dot { border-color:#f5a623; transform:scale(1.07); }
+    #sun-stepper .sun-node:focus-visible .node-dot { outline:2px solid #f5a623; outline-offset:3px; }
+    #sun-stepper .sun-node.done .node-dot { background:#1f7a4d; border-color:#1f7a4d; color:#fff; }
+    #sun-stepper .sun-node.done .node-dot::before { content:""; width:.3rem; height:.55rem; border:solid #fff; border-width:0 2px 2px 0; transform:translateY(-1px) rotate(45deg); }
+    #sun-stepper .sun-node.current .node-dot { background:#f5a623; border-color:#f5a623; color:transparent; transform:none; }
+
+    #sun-stepper .node-label { margin:0; padding:0; background:none; font-size:.78rem; font-weight:500; letter-spacing:.01em; line-height:1.2; text-align:center; white-space:nowrap; opacity:.6; transition:opacity .25s; }
+    #sun-stepper .sun-node:hover .node-label,
+    #sun-stepper .sun-node.done .node-label { opacity:.85; }
+    #sun-stepper .sun-node.current .node-label { opacity:1; font-weight:700; }
+
+    #sun-stepper .sun-marker { position:absolute; left:0; top:0; z-index:2; display:grid; place-items:center; width:2.25rem; height:2.25rem; margin:-1.125rem 0 0 -1.125rem; border-radius:50%; color:#fff; background:linear-gradient(145deg, #ffc94d, #f5a623); box-shadow:0 0 0 5px rgba(245,166,35,.22), 0 6px 16px rgba(245,166,35,.45); transition:transform .5s cubic-bezier(.4,0,.2,1); pointer-events:none; }
+    #sun-stepper .sun-marker svg { width:1.25rem; height:1.25rem; animation:sun-spin 24s linear infinite; }
+    @keyframes sun-spin { to { transform:rotate(360deg); } }
+
+    @media (max-width: 560px) {
+        /* six labels don't fit on a phone — show just the current one */
+        #sun-stepper .node-label { visibility:hidden; font-size:.74rem; }
+        #sun-stepper .sun-node.current .node-label { visibility:visible; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        #sun-stepper .sun-marker { transition:none; }
+        #sun-stepper .sun-marker svg { animation:none; }
+        #sun-stepper .node-dot, #sun-stepper .sun-node::before { transition:none; }
+    }
+</style>
+
 <div class="survey-layout">
 
     <div class="card survey-main" id="survey-card">
 
-        <div class="sun-stepper" id="sun-stepper">
-            <div class="sun-stepper-track"></div>
-            <div class="sun-marker" id="sun-marker">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <circle cx="12" cy="12" r="4"/>
-                    <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
-                </svg>
-            </div>
-            <div class="sun-stepper-nodes" id="sun-nodes">
-                <button type="button" class="sun-node" data-step="0"><span class="node-dot"></span><span class="node-label">Roof</span></button>
-                <button type="button" class="sun-node" data-step="1"><span class="node-dot"></span><span class="node-label">Shading</span></button>
-                <button type="button" class="sun-node" data-step="2"><span class="node-dot"></span><span class="node-label">Electrical</span></button>
-                <button type="button" class="sun-node" data-step="3"><span class="node-dot"></span><span class="node-label">Access</span></button>
-                <button type="button" class="sun-node" data-step="4"><span class="node-dot"></span><span class="node-label">Recommend</span></button>
-            </div>
-        </div>
 
         <form method="post" novalidate id="survey-form">
             {% csrf_token %}
@@ -117,6 +239,7 @@
                 <div class="field-group">
                     <label for="{{ form.average_monthly_consumption_kwh.id_for_label }}">Average monthly consumption (kWh) <span class="optional">(optional)</span></label>
                     {{ form.average_monthly_consumption_kwh }}
+                    <div class="helptext">No bills? Leave this blank and list the devices in the next step instead &mdash; the estimate will use those.</div>
                 </div>
                 <div class="field-group field-checkbox">
                     {{ form.has_existing_backup }}
@@ -129,6 +252,105 @@
             </section>
 
             <section class="survey-step" data-step="3">
+                <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Devices to power</div>
+                <p class="helptext" style="margin-bottom:.75rem;">
+                    Suggested for a <strong>{{ customer.get_customer_type_display|lower }}</strong> site.
+                    Open a category and enter a quantity for each device the customer needs powered (leave at 0 to skip).
+                    Something missing? Use <em>Add appliance</em> inside the category. Tick <em>Backup</em> for devices that must keep
+                    running when the grid is down &mdash; they size the battery.
+                </p>
+
+                {{ load_formset.management_form }}
+                {% if load_formset.non_form_errors %}
+                    <ul class="errorlist">{% for e in load_formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% endif %}
+
+                <div class="load-toolbar" id="load-tools" hidden>
+                    <label class="load-filter">
+                        <input type="checkbox" id="load-only-added"> Show only devices I've added
+                    </label>
+                    <div class="load-toolbar-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" id="load-expand-all">Expand all</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="load-collapse-all">Collapse all</button>
+                    </div>
+                </div>
+
+                <!-- Plain table: the server-rendered source of truth. The script below moves
+                     these rows into the category groups and hides this table (without JS it
+                     simply stays as a flat list). -->
+                <div class="load-table-wrap" id="load-source">
+                    <table class="load-table" id="load-table">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Qty</th>
+                                <th>Watts each</th>
+                                <th title="Start-up power as a multiple of running power. 1 for electronics, 3&ndash;6 for motors and compressors.">Surge &times;</th>
+                                <th title="Effective hours at full power per day">Hrs/day</th>
+                                <th title="Must keep running during an outage">Backup</th>
+                                <th>3-phase</th>
+                                <th>Remove</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for f in load_formset %}
+                            <tr class="load-row">
+                                <td class="load-device">
+                                    {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                                    {{ f.name }}{{ f.name.errors }}
+                                    <div class="load-sub">{{ f.category }}{{ f.notes }}</div>
+                                    {{ f.category.errors }}{{ f.notes.errors }}
+                                </td>
+                                <td>{{ f.quantity }}{{ f.quantity.errors }}</td>
+                                <td>{{ f.rated_power_w }}{{ f.rated_power_w.errors }}</td>
+                                <td>{{ f.surge_multiplier }}{{ f.surge_multiplier.errors }}</td>
+                                <td>{{ f.hours_per_day }}{{ f.hours_per_day.errors }}</td>
+                                <td class="load-check">{{ f.is_essential }}</td>
+                                <td class="load-check">{{ f.is_three_phase }}</td>
+                                <td class="load-check load-remove">{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Category groups are built here by the script. -->
+                <div id="load-groups" hidden></div>
+
+                <div class="load-extra" id="load-extra" hidden>
+                    <label for="load-extra-cat">Not listed? Add an appliance to</label>
+                    <select id="load-extra-cat"></select>
+                    <button type="button" class="btn btn-ghost btn-sm" id="load-extra-add">+ Add appliance</button>
+                </div>
+
+                <!-- Blank rows waiting to be handed out by "Add appliance". -->
+                <table hidden aria-hidden="true"><tbody id="load-spares"></tbody></table>
+
+                <!-- Blueprint for appliances added beyond the spare rows.
+                     Keep the cells in sync with the loop above. -->
+                <template id="load-row-template">
+                    {% with f=load_formset.empty_form %}
+                    <tr class="load-row">
+                        <td class="load-device">
+                            {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                            {{ f.name }}
+                            <div class="load-sub">{{ f.category }}{{ f.notes }}</div>
+                        </td>
+                        <td>{{ f.quantity }}</td>
+                        <td>{{ f.rated_power_w }}</td>
+                        <td>{{ f.surge_multiplier }}</td>
+                        <td>{{ f.hours_per_day }}</td>
+                        <td class="load-check">{{ f.is_essential }}</td>
+                        <td class="load-check">{{ f.is_three_phase }}</td>
+                        <td class="load-check load-remove"></td>
+                    </tr>
+                    {% endwith %}
+                </template>
+
+                <div class="helptext" id="load-summary-line" style="margin-top:.75rem;">No devices added yet.</div>
+            </section>
+
+            <section class="survey-step" data-step="4">
                 <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Access &amp; space</div>
                 <div class="field-group">
                     <label for="{{ form.available_installation_area_sqm.id_for_label }}">Available installation area (m&sup2;) <span class="optional">(optional)</span></label>
@@ -140,7 +362,7 @@
                 </div>
             </section>
 
-            <section class="survey-step" data-step="4">
+            <section class="survey-step" data-step="5">
                 <div class="field-section-title" style="margin-top:0; padding-top:0; border-top:none;">Recommendation</div>
                 <div class="field-group">
                     <div class="helptext" id="auto-estimate-line">
@@ -203,6 +425,11 @@
         </div>
 
         <div class="readiness-row readiness-row-stacked">
+            <span class="readiness-label">Devices</span>
+            <span class="readiness-value" id="val-devices">&mdash;</span>
+        </div>
+
+        <div class="readiness-row readiness-row-stacked">
             <span class="readiness-label">Space</span>
             <span class="readiness-value mono" id="val-space">&mdash;</span>
         </div>
@@ -221,6 +448,7 @@
     const nodes = Array.prototype.slice.call(document.querySelectorAll('.sun-node'));
     const nodesContainer = document.getElementById('sun-nodes');
     const sunMarker = document.getElementById('sun-marker');
+    const sunStepper = document.getElementById('sun-stepper');
     const surveyCard = document.getElementById('survey-card');
     const backBtn = document.getElementById('survey-back');
     const nextBtn = document.getElementById('survey-next');
@@ -235,14 +463,18 @@
         return 0;
     }
 
-    function positionSun(index) {
-        const total = nodes.length - 1;
-        const progress = total > 0 ? index / total : 0;
-        const trackWidth = nodesContainer.offsetWidth;
-        const x = progress * trackWidth;
-        const arcHeight = 30; // the sun rises over the middle station, sets at the ends
-        const y = -Math.sin(Math.PI * progress) * arcHeight;
+    // The sun sits on the current station's circle, measured from the DOM, so it
+    // stays aligned at any width or label length.
+    let sunPlaced = false;
+    function positionSun(index, instant) {
+        const dot = nodes[index].querySelector('.node-dot');
+        const host = sunStepper.getBoundingClientRect();
+        const d = dot.getBoundingClientRect();
+        const x = d.left - host.left + d.width / 2;
+        const y = d.top - host.top + d.height / 2;
+        if (instant) sunMarker.style.transition = 'none';
         sunMarker.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+        if (instant) { void sunMarker.offsetWidth; sunMarker.style.transition = ''; }
     }
 
     function showStep(index) {
@@ -251,8 +483,10 @@
         nodes.forEach(function (n, i) {
             n.classList.toggle('current', i === index);
             n.classList.toggle('done', i < index);
+            if (i === index) n.setAttribute('aria-current', 'step'); else n.removeAttribute('aria-current');
         });
-        positionSun(index);
+        positionSun(index, !sunPlaced);
+        sunPlaced = true;
         backBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
         navBar.style.display = index === steps.length - 1 ? 'none' : 'flex';
         surveyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -263,7 +497,8 @@
     });
     backBtn.addEventListener('click', function () { if (currentStep > 0) showStep(currentStep - 1); });
     nextBtn.addEventListener('click', function () { if (currentStep < steps.length - 1) showStep(currentStep + 1); });
-    window.addEventListener('resize', function () { positionSun(currentStep); });
+    window.addEventListener('resize', function () { positionSun(currentStep, true); });
+    window.addEventListener('load', function () { positionSun(currentStep, true); }); // after fonts settle
 
     // Enable the wizard only once JS has run — without it, every step
     // stays visible and this is just a plain long-scrolling form.
@@ -288,13 +523,232 @@
     const SHADING_DERATE = { none: 1.00, minimal: 0.90, moderate: 0.75, heavy: 0.55, '': 1.00 };
     const MIN_SYSTEM_SIZE_KW = 1.0;
 
-    function computeAutoEstimateKw() {
-        const consumptionEl = byId('id_average_monthly_consumption_kwh');
-        const shadingEl = byId('id_shading_level');
-        const monthlyKwh = consumptionEl && consumptionEl.value ? parseFloat(consumptionEl.value) : NaN;
-        if (!monthlyKwh || monthlyKwh <= 0) return null;
+    // ---------------------------------------------------------------- devices step
+    // The server renders one flat list of rows, so the formset posts exactly as
+    // before. Here the same <tr> elements are regrouped into one collapsible
+    // section per category. The blank "other" rows become spares that the
+    // "Add appliance" buttons hand out on demand (with a fresh row cloned from
+    // the formset's empty_form once the spares run out).
+    const loadForm = byId('survey-form');
+    const groupsEl = byId('load-groups');
+    const sourceWrap = byId('load-source');
+    const sourceTable = byId('load-table');
+    const sparesEl = byId('load-spares');
+    const rowTpl = byId('load-row-template');
+    const totalFormsEl = loadForm.querySelector("input[name$='-TOTAL_FORMS']");
+    const loadGroups = [];
 
-        const dailyKwh = monthlyKwh / 30;
+    function rowField(row, suffix) { return row.querySelector("[name$='-" + suffix + "']"); }
+    function rowNum(row, suffix) {
+        const el = rowField(row, suffix);
+        return el ? (parseFloat(el.value) || 0) : 0;
+    }
+    function getRows() { return Array.from(groupsEl.querySelectorAll('.load-row')); }
+    function isSaved(row) { const id = rowField(row, 'id'); return !!(id && id.value); }
+    function isBlank(row) {
+        const name = rowField(row, 'name');
+        return !isSaved(row) && !(name && name.value.trim()) && rowNum(row, 'quantity') <= 0;
+    }
+
+    // Put every field in the row back to the value it was rendered with, so
+    // Django sees the form as unchanged and skips it.
+    function resetRow(row) {
+        row.querySelectorAll('input, select, textarea').forEach(function (el) {
+            if (el.type === 'hidden') return;
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                el.checked = el.defaultChecked;
+            } else if (el.tagName === 'SELECT') {
+                let idx = 0;
+                for (let i = 0; i < el.options.length; i++) {
+                    if (el.options[i].defaultSelected) { idx = i; break; }
+                }
+                el.selectedIndex = idx;
+            } else {
+                el.value = el.defaultValue;
+            }
+        });
+    }
+
+    function catField(row) { return rowField(row, 'category'); }
+    function catLabel(el) {
+        if (!el) return '';
+        if (el.tagName === 'SELECT') return el.value && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : '';
+        return el.value;
+    }
+
+    function makeGroup(key, label) {
+        const el = document.createElement('details');
+        el.className = 'load-group';
+        el.hidden = true; // shown once it holds a device (or the user adds to it)
+        el.innerHTML =
+            '<summary>' +
+                '<span class="load-group-chevron" aria-hidden="true"></span>' +
+                '<span class="load-group-title"></span>' +
+                '<span class="load-group-meta"></span>' +
+            '</summary>' +
+            '<div class="load-group-body">' +
+                '<div class="load-table-wrap"><table class="load-table"><thead></thead><tbody></tbody></table></div>' +
+                '<div class="load-group-foot"><button type="button" class="btn btn-ghost btn-sm load-add">+ Add appliance</button></div>' +
+            '</div>';
+        el.querySelector('.load-group-title').textContent = label;
+        el.querySelector('thead').innerHTML = sourceTable.tHead.innerHTML;
+        const group = { key: key, label: label, el: el, body: el.querySelector('tbody'), meta: el.querySelector('.load-group-meta') };
+        el.querySelector('.load-add').addEventListener('click', function () { addAppliance(group); });
+        groupsEl.appendChild(el);
+        loadGroups.push(group);
+        return group;
+    }
+
+    function groupFor(key, label) {
+        for (let i = 0; i < loadGroups.length; i++) {
+            if (loadGroups[i].key === key) return loadGroups[i];
+        }
+        return makeGroup(key, label);
+    }
+
+    function addRemoveButton(row) {
+        const cell = row.querySelector('.load-remove');
+        if (!cell || cell.querySelector('input[type="checkbox"]') || cell.querySelector('.load-remove-btn')) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'load-remove-btn';
+        btn.title = 'Remove this appliance';
+        btn.setAttribute('aria-label', 'Remove this appliance');
+        btn.innerHTML = '&times;';
+        btn.addEventListener('click', function () { discardRow(row); });
+        cell.appendChild(btn);
+    }
+
+    function discardRow(row) {
+        resetRow(row);
+        row.classList.remove('load-custom', 'has-qty', 'load-empty');
+        const btn = row.querySelector('.load-remove-btn');
+        if (btn) btn.remove();
+        sparesEl.appendChild(row);
+        updateReadiness();
+    }
+
+    // A spare row if one is left, otherwise a new one cloned from empty_form.
+    function takeRow() {
+        const spare = sparesEl.querySelector('.load-row');
+        if (spare) { sparesEl.removeChild(spare); return spare; }
+        const index = parseInt(totalFormsEl.value, 10) || 0;
+        const holder = document.createElement('tbody');
+        holder.innerHTML = rowTpl.innerHTML.replace(/__prefix__/g, index).trim();
+        totalFormsEl.value = index + 1;
+        return holder.querySelector('.load-row');
+    }
+
+    function addAppliance(group) {
+        const row = takeRow();
+        const cat = catField(row);
+        if (cat) cat.value = group.key;
+        row.classList.remove('load-empty');
+        row.classList.add('load-custom');
+        addRemoveButton(row);
+        const name = rowField(row, 'name');
+        if (name && !name.placeholder) name.placeholder = 'Appliance name';
+        group.body.appendChild(row);
+        group.el.hidden = false;
+        group.el.open = true;
+        updateReadiness();
+        if (name) name.focus();
+    }
+
+    // Build one group per category option (so every category can take a new
+    // appliance, even with no suggested devices), then file each row.
+    const catSelect = rowTpl.content.querySelector("[name$='-category']");
+    if (catSelect && catSelect.tagName === 'SELECT') {
+        Array.from(catSelect.options).forEach(function (o) { if (o.value) makeGroup(o.value, o.text); });
+    }
+    Array.from(sourceTable.querySelectorAll('tbody .load-row')).forEach(function (row) {
+        if (isBlank(row) && !row.querySelector('.errorlist')) { sparesEl.appendChild(row); return; }
+        const cat = catField(row);
+        const key = cat ? cat.value : '';
+        const g = groupFor(key, key ? catLabel(cat) : 'Uncategorised');
+        g.el.hidden = false;
+        g.body.appendChild(row);
+    });
+    // "Add an appliance to [category]" — for categories with no suggested devices
+    // on this site type (e.g. Office / POS on a residential site).
+    const extraCat = byId('load-extra-cat');
+    loadGroups.forEach(function (g) {
+        const o = document.createElement('option');
+        o.value = g.key;
+        o.textContent = g.label;
+        extraCat.appendChild(o);
+    });
+    byId('load-extra-add').addEventListener('click', function () {
+        const g = groupFor(extraCat.value, extraCat.options[extraCat.selectedIndex].text);
+        addAppliance(g);
+    });
+    byId('load-extra').hidden = false;
+    sourceWrap.hidden = true;
+    groupsEl.hidden = false;
+    byId('load-tools').hidden = false;
+
+    // Open the categories that already have something in them; otherwise the first.
+    loadGroups.forEach(function (g) {
+        g.el.open = Array.from(g.body.querySelectorAll('.load-row')).some(function (r) {
+            return r.querySelector('.errorlist') || rowNum(r, 'quantity') > 0;
+        });
+    });
+    const visibleGroups = loadGroups.filter(function (g) { return !g.el.hidden; });
+    if (visibleGroups.length && !visibleGroups.some(function (g) { return g.el.open; })) visibleGroups[0].el.open = true;
+
+    // Running load for one row (null when it doesn't count).
+    function rowStats(row) {
+        const del = rowField(row, 'DELETE');
+        if (del && del.checked) return null;
+        const running = rowNum(row, 'quantity') * rowNum(row, 'rated_power_w');
+        if (running <= 0) return null;
+        return { watts: running, kwh: running * rowNum(row, 'hours_per_day') / 1000 };
+    }
+
+    // Totals across every row with a quantity, ignoring rows ticked for removal.
+    // Mirrors LoadSummary in sizing.py (daily kWh only — the inverter/battery
+    // maths stays server-side).
+    function deviceTotals() {
+        let kwh = 0, watts = 0, count = 0;
+        getRows().forEach(function (row) {
+            const s = rowStats(row);
+            if (!s) return;
+            count += 1;
+            watts += s.watts;
+            kwh += s.kwh;
+        });
+        return { kwh: kwh, kw: watts / 1000, count: count };
+    }
+
+    // Per-category summary shown on the collapsed header.
+    function updateGroups() {
+        loadGroups.forEach(function (g) {
+            const rows = g.body.querySelectorAll('.load-row');
+            let count = 0, kwh = 0;
+            rows.forEach(function (row) {
+                const s = rowStats(row);
+                if (s) { count += 1; kwh += s.kwh; }
+            });
+            g.meta.textContent = count
+                ? count + ' added · ' + kwh.toFixed(1) + ' kWh/day'
+                : rows.length + (rows.length === 1 ? ' device' : ' devices');
+            g.el.classList.toggle('has-items', count > 0);
+        });
+    }
+
+    // Bills win when present (same as sizing.py); otherwise use the devices.
+    function dailyConsumptionKwh() {
+        const consumptionEl = byId('id_average_monthly_consumption_kwh');
+        const monthlyKwh = consumptionEl && consumptionEl.value ? parseFloat(consumptionEl.value) : NaN;
+        if (monthlyKwh > 0) return monthlyKwh / 30;
+        const totals = deviceTotals();
+        return totals.kwh > 0 ? totals.kwh : null;
+    }
+
+    function computeAutoEstimateKw() {
+        const shadingEl = byId('id_shading_level');
+        const dailyKwh = dailyConsumptionKwh();
+        if (dailyKwh === null) return null;
         const shadingFactor = SHADING_DERATE[shadingEl ? shadingEl.value : ''] ?? 1.0;
         const effectiveSunHours = PEAK_SUN_HOURS * shadingFactor * PERFORMANCE_RATIO;
         if (effectiveSunHours <= 0) return null;
@@ -351,6 +805,21 @@
             ? selectedLabel(supplyEl) + (amps ? ' · ' + amps + 'A' : '')
             : '—';
 
+        const totals = deviceTotals();
+        byId('val-devices').textContent = totals.count
+            ? totals.count + (totals.count === 1 ? ' device · ' : ' devices · ') + totals.kwh.toFixed(1) + ' kWh/day · ' + totals.kw.toFixed(1) + ' kW'
+            : '—';
+        const summaryLine = byId('load-summary-line');
+        if (summaryLine) {
+            summaryLine.textContent = totals.count
+                ? totals.count + ' device type' + (totals.count === 1 ? '' : 's') + ' added — about ' + totals.kwh.toFixed(1) + ' kWh/day, ' + totals.kw.toFixed(1) + ' kW connected.'
+                : 'No devices added yet.';
+        }
+        getRows().forEach(function (row) {
+            row.classList.toggle('has-qty', rowNum(row, 'quantity') > 0);
+        });
+        updateGroups();
+
         const space = spaceEl ? spaceEl.value : '';
         byId('val-space').textContent = space ? space + ' m²' : '—';
 
@@ -358,13 +827,13 @@
         const autoEstimateKw = computeAutoEstimateKw();
         const autoEstimateEl = byId('auto-estimate-value');
         if (autoEstimateEl) {
-            autoEstimateEl.textContent = autoEstimateKw !== null ? autoEstimateKw.toFixed(1) + ' kW' : 'add monthly consumption';
+            autoEstimateEl.textContent = autoEstimateKw !== null ? autoEstimateKw.toFixed(1) + ' kW' : 'add monthly consumption or devices';
         }
         byId('val-estimate').textContent = manualEstimate
             ? manualEstimate + ' kW (manual)'
             : (autoEstimateKw !== null ? autoEstimateKw.toFixed(1) + ' kW (auto)' : '—');
 
-        const tracked = [roofCondition, shadingLevel, supplyType, space, manualEstimate || autoEstimateKw];
+        const tracked = [roofCondition, shadingLevel, supplyType, totals.count || (byId('id_average_monthly_consumption_kwh') || {}).value, space, manualEstimate || autoEstimateKw];
         const filledCount = tracked.filter(Boolean).length;
         setRing(Math.round((filledCount / tracked.length) * 100));
     }
@@ -385,6 +854,41 @@
         const el = byId(id);
         if (el) el.addEventListener('input', updateReadiness);
         if (el) el.addEventListener('change', updateReadiness);
+    });
+
+    // Device rows: any edit refreshes the totals (events bubble up from the rows).
+    groupsEl.addEventListener('input', updateReadiness);
+    groupsEl.addEventListener('change', updateReadiness);
+
+    // Expand / collapse every category.
+    byId('load-expand-all').addEventListener('click', function () {
+        loadGroups.forEach(function (g) { g.el.open = true; });
+    });
+    byId('load-collapse-all').addEventListener('click', function () {
+        loadGroups.forEach(function (g) { g.el.open = false; });
+    });
+
+    // "Show only devices I've added" — evaluated when toggled (not on every
+    // keystroke), so a row doesn't vanish while you're still typing in it.
+    const onlyAdded = byId('load-only-added');
+    if (onlyAdded) {
+        onlyAdded.addEventListener('change', function () {
+            getRows().forEach(function (row) {
+                row.classList.toggle('load-empty', rowNum(row, 'quantity') <= 0);
+            });
+            loadGroups.forEach(function (g) {
+                g.el.classList.toggle('load-group-empty', !g.body.querySelector('.load-row:not(.load-empty)'));
+            });
+            groupsEl.classList.toggle('only-added', onlyAdded.checked);
+        });
+    }
+
+    // Appliances added with "Add appliance" but left empty are reset just
+    // before submit, so they don't trip validation (or get saved).
+    loadForm.addEventListener('submit', function () {
+        getRows().forEach(function (row) {
+            if (row.classList.contains('load-custom') && isBlank(row)) resetRow(row);
+        });
     });
 
     updateReadiness();

@@ -17,6 +17,13 @@
             <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
         {% endif %}
 
+        {% if entry.category %}
+        <div class="field-group">
+            <label for="{{ form.name.id_for_label }}">Item</label>
+            {{ form.name }}
+            {% for e in form.name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+        </div>
+        {% else %}
         <div class="field-row">
             <div class="field-group">
                 <label for="{{ form.name.id_for_label }}">Name</label>
@@ -33,6 +40,7 @@
             <label for="{{ form.model_number.id_for_label }}">Model number <span class="optional">(optional)</span></label>
             {{ form.model_number }}
         </div>
+        {% endif %}
 
         {% if kind == "panels" %}
         <div class="field-row">
@@ -100,25 +108,26 @@
         </div>
         {% endif %}
 
-        <div class="field-section-title">Pricing &amp; stock</div>
-        <div class="field-row">
-            <div class="field-group">
-                <label for="{{ form.unit_price_kes.id_for_label }}">Unit price (KES) <span class="optional">(optional)</span></label>
-                {{ form.unit_price_kes }}
-            </div>
-            <div class="field-group">
-                <label for="{{ form.stock_quantity.id_for_label }}">Stock quantity</label>
-                {{ form.stock_quantity }}
-            </div>
+        <div class="field-section-title">Pricing</div>
+        <div class="field-group">
+            {% if entry.category %}
+            <label for="{{ form.unit_price_kes.id_for_label }}">Unit price (KES)</label>
+            {% else %}
+            <label for="{{ form.unit_price_kes.id_for_label }}">Unit price (KES) <span class="optional">(optional)</span></label>
+            {% endif %}
+            {{ form.unit_price_kes }}
+            {% for e in form.unit_price_kes.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
         </div>
         <div class="field-group field-checkbox">
             {{ form.is_active }}
-            <label for="{{ form.is_active.id_for_label }}">Active — visible to the sizing calculator</label>
+            <label for="{{ form.is_active.id_for_label }}">Active — available to the sizing calculator and quotations</label>
         </div>
+        {% if not entry.category %}
         <div class="field-group">
             <label for="{{ form.notes.id_for_label }}">Notes <span class="optional">(optional)</span></label>
             {{ form.notes }}
         </div>
+        {% endif %}
 
         <div class="form-actions">
             <button type="submit" class="btn btn-accent">{% if instance %}Save changes{% else %}Add {{ entry.singular }}{% endif %}</button>

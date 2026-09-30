@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ quotation.quotation_id }} — {{ customer.full_name }}</title>
+<style>
+    /*
+    xhtml2pdf (reportlab under the hood) does NOT support: CSS custom
+    properties (var(...)), flexbox/grid, external @import / Google Fonts,
+    box-shadow, border-radius on tables reliably, or most @media queries.
+    So this template hardcodes the base.css tokens as literal values and
+    uses table-based layout instead of flex. Keep this in sync by hand if
+    the design tokens in base.css ever change — it deliberately does NOT
+    load base.css.
+    */
+    @page {
+        size: A4;
+        margin: 2.2cm 1.8cm;
+    }
+    body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 10.5pt;
+        color: #2E2A1C; /* --ink */
+    }
+    .doc-header {
+        text-align: center;
+        border-bottom: 2px solid #665B30; /* --accent */
+        padding-bottom: 10px;
+        margin-bottom: 16px;
+    }
+    .doc-header h1 {
+        font-family: Helvetica-Bold, Helvetica, Arial, sans-serif;
+        font-size: 16pt;
+        margin: 0 0 2px 0;
+        color: #2E2A1C;
+    }
+    .doc-header .tag {
+        font-size: 9pt;
+        color: #8C7F63; /* --muted */
+    }
+    .doc-title {
+        text-align: center;
+        font-size: 11.5pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin: 16px 0;
+        color: #665B30; /* --accent */
+    }
+    table.meta-table {
+        width: 100%;
+        margin-bottom: 18px;
+    }
+    table.meta-table td {
+        vertical-align: top;
+        font-size: 9.5pt;
+        width: 50%;
+    }
+    table.meta-table td.right {
+        text-align: right;
+    }
+    .meta-label {
+        font-size: 8pt;
+        text-transform: uppercase;
+        color: #8C7F63; /* --muted */
+        margin-bottom: 2px;
+    }
+    table.quote-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 18px 0;
+        font-size: 9.5pt;
+    }
+    table.quote-table th, table.quote-table td {
+        border: 1px solid #EADCD3; /* --line */
+        padding: 6px 8px;
+        text-align: left;
+    }
+    table.quote-table th {
+        background-color: #F8EDEB; /* --bg */
+        text-transform: uppercase;
+        font-size: 8pt;
+        color: #8C7F63; /* --muted */
+    }
+    table.quote-table td.num, table.quote-table th.num {
+        text-align: right;
+        font-family: Courier, monospace; /* --font-mono */
+    }
+    .total-row td {
+        font-weight: bold;
+        background-color: #F8EDEB; /* --bg */
+    }
+    p.meta-line {
+        font-size: 9.5pt;
+        margin: 4px 0;
+    }
+    .sign-block {
+        margin-top: 40px;
+    }
+    .sign-block p {
+        font-size: 9.5pt;
+    }
+    .sign-line {
+        border-top: 1px solid #2E2A1C; /* --ink */
+        width: 220pt;
+        margin-top: 40px;
+        padding-top: 4px;
+        font-size: 8.5pt;
+        color: #8C7F63; /* --muted */
+    }
+</style>
+</head>
+<body>
+
+    <div class="doc-header">
+        <h1>Solar PMS</h1>
+        <div class="tag">EPC Operations &middot; Quotation</div>
+    </div>
+
+    <div class="doc-title">Quotation {{ quotation.quotation_id }}</div>
+
+    <table class="meta-table">
+        <tr>
+            <td>
+                <div class="meta-label">Prepared for</div>
+                <p class="meta-line">
+                    {{ customer.full_name }}<br>
+                    {{ customer.phone_number }}{% if customer.email %} &middot; {{ customer.email }}{% endif %}<br>
+                    {% if customer.address %}{{ customer.address }}, {% endif %}{{ customer.county }}
+                </p>
+            </td>
+            <td class="right">
+                <div class="meta-label">Date issued</div>
+                <p class="meta-line">{{ quotation.created_at|date:"d M Y" }}</p>
+                <div class="meta-label">Valid for</div>
+                <p class="meta-line">{{ quotation.validity_days }} days</p>
+            </td>
+        </tr>
+    </table>
+
+    <table class="quote-table">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th class="num">Qty</th>
+                <th class="num">Unit price (KES)</th>
+                <th class="num">Total (KES)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in line_items %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td class="num">{{ item.quantity }}</td>
+                <td class="num">{{ item.unit_price_kes|floatformat:2 }}</td>
+                <td class="num">{{ item.line_total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="3" style="text-align:right;">Total (KES)</td>
+                <td class="num">{{ quotation.subtotal_kes|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if quotation.payment_terms %}
+    <p class="meta-line"><b>Payment terms:</b> {{ quotation.payment_terms }}</p>
+    {% endif %}
+    {% if quotation.notes %}
+    <p class="meta-line"><b>Notes:</b> {{ quotation.notes }}</p>
+    {% endif %}
+
+    <div class="sign-block">
+        <p>I hereby confirm acceptance of the terms and approval for installation of the solar PV system.</p>
+        <div class="sign-line">Client signature &amp; date</div>
+    </div>
+
+</body>
+</html>

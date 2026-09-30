@@ -17,7 +17,7 @@
 <div class="card">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
         <form method="get" style="flex:1; max-width:280px;">
-            <input type="text" name="q" value="{{ query }}" placeholder="Search by name or brand…">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search by name…">
         </form>
         <a href="{% url 'catalog_home' %}" style="font-size:13px; font-weight:600; color:var(--muted); text-decoration:none;">&larr; All catalog</a>
     </div>
@@ -31,7 +31,6 @@
                 {% if kind == "inverters" %}<th>Capacity</th><th>Phase</th>{% endif %}
                 {% if kind == "batteries" %}<th>Capacity</th><th>Chemistry</th>{% endif %}
                 <th>Price (KES)</th>
-                <th>Stock</th>
                 <th>Status</th>
                 <th></th>
             </tr>
@@ -47,12 +46,9 @@
                 {% if kind == "inverters" %}<td class="mono">{{ item.capacity_kw }}kW</td><td>{{ item.get_phase_display }}</td>{% endif %}
                 {% if kind == "batteries" %}<td class="mono">{{ item.capacity_kwh }}kWh</td><td>{{ item.get_chemistry_display }}</td>{% endif %}
                 <td class="mono">{{ item.unit_price_kes|default:"—" }}</td>
-                <td class="mono">{{ item.stock_quantity }}</td>
                 <td>
-                    {% if item.in_stock %}
-                        <span class="status-badge quotation">In stock</span>
-                    {% elif item.is_active %}
-                        <span class="status-badge lead">Out of stock</span>
+                    {% if item.is_active %}
+                        <span class="status-badge quotation">Active</span>
                     {% else %}
                         <span class="status-badge">Inactive</span>
                     {% endif %}
@@ -70,7 +66,7 @@
     {% else %}
     <div class="empty-state">
         <h3>No {{ entry.label|lower }} yet</h3>
-        <p>Add your first item so the sizing calculator has something to recommend.</p>
+        <p>Add your first item and its price.</p>
         <a href="{% url 'equipment_create' kind %}" class="btn btn-accent" style="margin-top:14px;">Add {{ entry.singular }}</a>
     </div>
     {% endif %}

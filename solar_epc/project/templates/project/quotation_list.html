@@ -1,0 +1,99 @@
+{% extends "project/base.html" %}
+{% block title %}Quotations — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 7 &middot; Quotation</div>
+        <h1>Quotations</h1>
+        <p class="desc">Every quotation in one place. Select a row to open that client's quotation.</p>
+    </div>
+    <a href="{% url 'client_list' %}" class="btn btn-ghost">Start from a client</a>
+</div>
+
+
+<nav class="tabs" aria-label="Filter by status">
+    {% for tab in status_tabs %}
+    <a class="tab {% if tab.value == active_status %}active{% endif %}"
+       href="?{% if tab.value %}status={{ tab.value }}{% endif %}{% if query %}{% if tab.value %}&amp;{% endif %}q={{ query|urlencode }}{% endif %}"
+       {% if tab.value == active_status %}aria-current="page"{% endif %}>
+        {{ tab.label }} <span class="tab-count">{{ tab.count }}</span>
+    </a>
+    {% endfor %}
+</nav>
+
+<form class="search-bar" method="get" role="search">
+    {% if active_status %}<input type="hidden" name="status" value="{{ active_status }}">{% endif %}
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by client, client ID or quotation ID" aria-label="Search quotations">
+    <button type="submit" class="btn btn-primary">Search</button>
+    {% if query or active_status %}<a href="{% url 'quotation_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
+</form>
+
+<div class="card" style="padding:6px 8px;">
+    {% if quotations %}
+    <div class="table-scroll">
+        <table class="data quotes">
+            <thead>
+                <tr>
+                    <th>Quotation</th>
+                    <th>Client</th>
+                    <th>Status</th>
+                    <th class="num">Total (KES)</th>
+                    <th>Prepared by</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in quotations %}
+                <tr {% if q.is_openable %}class="row-link" data-href="{% url 'quotation_detail' q.project.customer.customer_id %}"{% else %}class="row-muted"{% endif %}>
+                    <td>
+                        {% if q.is_openable %}
+                        <a class="row-main mono" href="{% url 'quotation_detail' q.project.customer.customer_id %}">{{ q.quotation_id }}</a>
+                        {% else %}
+                        <span class="row-main mono">{{ q.quotation_id }}</span>
+                        {% endif %}
+                        <div class="sub mono">{{ q.project.project_id }}</div>
+                    </td>
+                    <td>
+                        {{ q.project.customer.full_name }}
+                        <div class="sub mono">{{ q.project.customer.customer_id }}</div>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ q.status }}">{{ q.get_status_display }}</span>
+                        {% if not q.is_openable %}<div class="sub">Older project</div>{% endif %}
+                    </td>
+                    <td class="num mono">{{ q.total_kes|floatformat:"0g" }}</td>
+                    <td>{{ q.prepared_by.get_full_name|default:q.prepared_by.username|default:"—" }}</td>
+                    <td class="mono">{{ q.created_at|date:"d M Y" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        {% if query or active_status %}
+        <h3>No quotations match</h3>
+        <p>Try a different status or search term.</p>
+        <a href="{% url 'quotation_list' %}" class="btn btn-ghost">Clear filters</a>
+        {% else %}
+        <h3>No quotations yet</h3>
+        <p>A quotation is created from a client's file once the site survey is done and the recommendation has been reviewed.</p>
+        <a href="{% url 'client_list' %}" class="btn btn-primary">Go to clients</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+/* Make the whole row a click target. The link in the first cell stays the
+   keyboard / screen-reader / middle-click path. */
+document.querySelectorAll("tr.row-link").forEach(function (row) {
+    row.addEventListener("click", function (e) {
+        if (e.target.closest("a")) return;
+        window.location.href = row.dataset.href;
+    });
+});
+</script>
+
+{% endblock %}

@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 class User(AbstractUser):
@@ -163,6 +164,7 @@ class Project(models.Model):
     class Status(models.TextChoices):
         LEAD = "lead", "Lead"
         SITE_ASSESSMENT = "site_assessment", "Site assessment"
+        ENGINEER_REVIEW = "engineer_review", "Engineer review"
         QUOTATION = "quotation", "Quotation"
         APPROVED = "approved", "Approved"
         INVOICED = "invoiced", "Invoiced"
@@ -328,10 +330,78 @@ class SiteAssessment(models.Model):
         return f"Site assessment — {self.project.project_id} ({self.get_status_display()})"
 
 
+class SiteLoadItem(models.Model):
+    """
+    One kind of device the customer needs powered, captured during the
+    site survey (e.g. "Fridge / freezer x2"). Which devices are suggested
+    depends on Customer.customer_type — see load_presets.py — but any
+    device can be added by hand.
+
+    These rows feed the sizing calculator (sizing.py): they give it a
+    consumption figure when there are no bills, a peak/surge load for
+    inverter sizing, and the "must stay on" load that sizes the battery.
+    """
+
+    class Category(models.TextChoices):
+        LIGHTING = "lighting", "Lighting"
+        REFRIGERATION = "refrigeration", "Refrigeration"
+        COOLING_HEATING = "cooling_heating", "Cooling / heating"
+        KITCHEN = "kitchen", "Kitchen"
+        LAUNDRY = "laundry", "Laundry"
+        WATER = "water", "Water pumping / heating"
+        ENTERTAINMENT_IT = "entertainment_it", "Entertainment / IT / network"
+        OFFICE_POS = "office_pos", "Office / point of sale"
+        MOTORS_MACHINERY = "motors_machinery", "Motors / machinery"
+        SECURITY_COMMS = "security_comms", "Security / communications"
+        OTHER = "other", "Other"
+
+    assessment = models.ForeignKey(
+        SiteAssessment, on_delete=models.CASCADE, related_name="load_items"
+    )
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.OTHER)
+    name = models.CharField(max_length=150, help_text="e.g. 'Fridge / freezer'")
+    quantity = models.PositiveIntegerField(default=1)
+    rated_power_w = models.PositiveIntegerField(
+        "Rated power per unit (W)", help_text="Running power of one unit, from its nameplate."
+    )
+    surge_multiplier = models.DecimalField(
+        "Start-up surge (x)", max_digits=4, decimal_places=1, default=1,
+        help_text="Start-up power as a multiple of running power. 1 for electronics/lighting, 3-6 for motors and compressors.",
+    )
+    hours_per_day = models.DecimalField(
+        "Hours per day", max_digits=4, decimal_places=1, default=1,
+        help_text="Effective hours at full power per day. For fridges/AC that cycle, use the equivalent full-power hours.",
+    )
+    is_essential = models.BooleanField(
+        "Keep on during outage", default=False,
+        help_text="Must keep running when the grid is down — sizes the battery backup.",
+    )
+    is_three_phase = models.BooleanField("Three-phase", default=False)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["category", "name", "id"]
+
+    @property
+    def total_running_w(self):
+        return self.quantity * self.rated_power_w
+
+    @property
+    def peak_surge_w(self):
+        return self.total_running_w * float(self.surge_multiplier)
+
+    @property
+    def daily_kwh(self):
+        return self.total_running_w * float(self.hours_per_day) / 1000
+
+    def __str__(self):
+        return f"{self.name} x{self.quantity}"
+
+
 # ---------------------------------------------------------------------------
 # Equipment catalog
 # ---------------------------------------------------------------------------
-# What's actually in stock, so the sizing calculator (see sizing.py) has
+# The products the company sells, so the sizing calculator (see sizing.py) has
 # real items to recommend rather than a bare kW number. Three separate
 # models rather than one generic "Equipment" table, because panels,
 # inverters and batteries are specified in genuinely different units
@@ -345,7 +415,6 @@ class EquipmentBase(models.Model):
     unit_price_kes = models.DecimalField(
         "Unit price (KES)", max_digits=12, decimal_places=2, null=True, blank=True
     )
-    stock_quantity = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(
         default=True, help_text="Inactive items are hidden from the sizing calculator and new quotations."
     )
@@ -362,7 +431,8 @@ class EquipmentBase(models.Model):
 
     @property
     def in_stock(self):
-        return self.is_active and self.stock_quantity > 0
+        # Stock levels aren't tracked any more; kept so older callers still work.
+        return self.is_active
 
 
 class SolarPanel(EquipmentBase):
@@ -431,6 +501,65 @@ class Battery(EquipmentBase):
         return f"{super().__str__()} — {self.capacity_kwh}kWh"
 
 
+class ProductCategory(models.Model):
+    """
+    A user-defined catalog category (e.g. "Sundries", "Mounting & cabling").
+    Panels, inverters and batteries stay as the built-in categories because
+    the sizing calculator depends on their technical specs; anything else the
+    company sells lives in one of these.
+    """
+    # Slugs are used in the /catalog/<slug>/ URLs, so they can't collide with
+    # the built-in categories or the fixed "categories" path.
+    RESERVED_SLUGS = {"panels", "inverters", "batteries", "categories", "new"}
+
+    name = models.CharField(max_length=80, unique=True, help_text="e.g. Sundries")
+    slug = models.SlugField(max_length=90, unique=True, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Product category"
+        verbose_name_plural = "Product categories"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name) or "category"
+            slug, i = base, 2
+            while slug in self.RESERVED_SLUGS or ProductCategory.objects.filter(slug=slug).exists():
+                slug = f"{base}-{i}"
+                i += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+
+class Product(models.Model):
+    """
+    An item in a user-defined category: just a name and its price, with no
+    technical specs.
+    """
+    category = models.ForeignKey(
+        ProductCategory, on_delete=models.CASCADE, related_name="products",
+        null=True, blank=True,
+    )
+    name = models.CharField(max_length=150, help_text="e.g. 'Roof mounting rails (per set)'")
+    unit_price_kes = models.DecimalField("Unit price (KES)", max_digits=12, decimal_places=2)
+    is_active = models.BooleanField(
+        default=True, help_text="Inactive products are hidden from new quotations."
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Product"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 # ---------------------------------------------------------------------------
 # System recommendation
 # ---------------------------------------------------------------------------
@@ -461,6 +590,22 @@ class SystemRecommendation(models.Model):
     warnings = models.JSONField(default=list, blank=True)
     calculated_at = models.DateTimeField(auto_now=True)
 
+    # --- Phase 6: Engineer review ---
+    # The calculator's pick is a starting point, not a final answer — an
+    # engineer confirms it (or edits panel/inverter/battery/quantities
+    # first) before it's allowed to become a quotation. Recalculating
+    # always clears this — see sizing.calculate_recommendation — so a
+    # stale sign-off can never carry over onto numbers the engineer never
+    # actually looked at.
+    is_reviewed = models.BooleanField(default=False)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(
+        blank=True, help_text="Anything adjusted from the calculator's pick, and why."
+    )
+
     def __str__(self):
         return f"Recommendation — {self.site_assessment.project.project_id}"
 
@@ -477,3 +622,92 @@ class SystemRecommendation(models.Model):
                 total += item.unit_price_kes * qty
                 has_price = True
         return total if has_price else None
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: Quotation
+# ---------------------------------------------------------------------------
+# One quotation per project, built from the SystemRecommendation's matched
+# equipment plus the standard balance-of-system line items (mounting,
+# cabling, protection, commissioning...) — the same structure as a real
+# EPC proposal's bill of materials. Line items are their own model rather
+# than fields on Quotation so quantities/prices can be edited per line
+# before it goes out, and so the same shape works whether the equipment
+# came from the calculator or was added by hand.
+
+class Quotation(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SENT = "sent", "Sent to client"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    ID_PREFIX = "QUO"
+
+    quotation_id = models.CharField(max_length=20, unique=True, editable=False)
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="quotation")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+
+    payment_terms = models.CharField(
+        max_length=255, blank=True,
+        default="80% on order, 20% upon completion.",
+    )
+    validity_days = models.PositiveIntegerField(default=30)
+    notes = models.TextField(
+        blank=True,
+        help_text="Exclusions, assumptions, or anything else the client should know.",
+    )
+
+    prepared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="quotations_prepared",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.quotation_id:
+            year = timezone.now().year
+            n = _next_sequence(Quotation, "quotation_id", year)
+            self.quotation_id = f"{self.ID_PREFIX}-{year}-{n:04d}"
+        super().save(*args, **kwargs)
+
+    @property
+    def subtotal_kes(self):
+        return sum((item.line_total for item in self.line_items.all()), 0)
+
+    def __str__(self):
+        return f"{self.quotation_id} — {self.project.customer.full_name}"
+
+
+class QuotationLineItem(models.Model):
+    class Category(models.TextChoices):
+        EQUIPMENT = "equipment", "Equipment"
+        BOS = "bos", "Balance of system"
+        SERVICES = "services", "Services"
+        OTHER = "other", "Other"
+
+    quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name="line_items")
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.EQUIPMENT)
+    description = models.CharField(max_length=255)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    unit_price_kes = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    @property
+    def line_total(self):
+        return (self.quantity or 0) * (self.unit_price_kes or 0)
+
+    def __str__(self):
+        return f"{self.description} x{self.quantity}"

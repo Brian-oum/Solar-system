@@ -1,0 +1,77 @@
+{% extends "project/base.html" %}
+{% block title %}Quotation — {{ customer.full_name }} — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Phase 7 &middot; Quotation</div>
+        <h1>{% if creating %}Create quotation{% else %}Edit quotation{% endif %}</h1>
+        <p class="desc">{{ customer.full_name }} &middot; <span class="mono">{{ project.project_id }}</span></p>
+    </div>
+    <a href="{% url 'client_detail' customer.customer_id %}" class="btn btn-ghost">&larr; Back to client</a>
+</div>
+
+<div class="card form-card" style="max-width:920px;">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ formset.management_form }}
+        {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.payment_terms.id_for_label }}">Payment terms</label>
+                {{ form.payment_terms }}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.validity_days.id_for_label }}">Valid for (days)</label>
+                {{ form.validity_days }}
+            </div>
+        </div>
+        <div class="field-group">
+            <label for="{{ form.notes.id_for_label }}">Notes <span class="optional">(optional)</span></label>
+            {{ form.notes }}
+        </div>
+
+        <div class="field-section-title">Bill of materials</div>
+        {% if formset.non_form_errors %}
+            <ul class="errorlist">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        <table class="data" style="margin-bottom:6px;">
+            <thead>
+                <tr>
+                    <th style="width:130px;">Category</th>
+                    <th>Description</th>
+                    <th style="width:90px;">Qty</th>
+                    <th style="width:140px;">Unit price (KES)</th>
+                    {% if not creating %}<th style="width:40px;">Del</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for lform in formset %}
+                <tr>
+                    {% for hidden in lform.hidden_fields %}{{ hidden }}{% endfor %}
+                    <td>{{ lform.category }}</td>
+                    <td>
+                        {{ lform.description }}
+                        {% for e in lform.description.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+                    </td>
+                    <td>{{ lform.quantity }}</td>
+                    <td>{{ lform.unit_price_kes }}</td>
+                    {% if not creating %}<td style="text-align:center;">{% if lform.instance.pk %}{{ lform.DELETE }}{% endif %}</td>{% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="helptext" style="margin-bottom:20px;">Equipment lines and prices come from the site assessment's recommendation — adjust anything before sending.</p>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Save quotation</button>
+            <a href="{% url 'client_detail' customer.customer_id %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
