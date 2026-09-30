@@ -5,7 +5,11 @@ from .models import (
     Battery,
     Customer,
     Inverter,
+    Product,
+    ProductCategory,
     Project,
+    Quotation,
+    QuotationLineItem,
     SiteAssessment,
     SolarPanel,
     SystemRecommendation,
@@ -96,17 +100,30 @@ class _EquipmentAdmin(admin.ModelAdmin):
 
 @admin.register(SolarPanel)
 class SolarPanelAdmin(_EquipmentAdmin):
-    list_display = ("__str__", "wattage_w", "unit_price_kes", "stock_quantity", "is_active")
+    list_display = ("__str__", "wattage_w", "unit_price_kes", "is_active")
 
 
 @admin.register(Inverter)
 class InverterAdmin(_EquipmentAdmin):
-    list_display = ("__str__", "capacity_kw", "phase", "is_hybrid", "unit_price_kes", "stock_quantity", "is_active")
+    list_display = ("__str__", "capacity_kw", "phase", "is_hybrid", "unit_price_kes", "is_active")
 
 
 @admin.register(Battery)
 class BatteryAdmin(_EquipmentAdmin):
-    list_display = ("__str__", "capacity_kwh", "chemistry", "unit_price_kes", "stock_quantity", "is_active")
+    list_display = ("__str__", "capacity_kwh", "chemistry", "unit_price_kes", "is_active")
+
+
+@admin.register(ProductCategory)
+class ProductCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "created_at")
+    search_fields = ("name",)
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ("name", "category", "unit_price_kes", "is_active")
+    list_filter = ("category", "is_active")
+    search_fields = ("name",)
 
 
 @admin.register(SystemRecommendation)
@@ -119,7 +136,24 @@ class SystemRecommendationAdmin(admin.ModelAdmin):
         "inverter",
         "battery",
         "battery_quantity",
+        "is_reviewed",
+        "reviewed_by",
         "calculated_at",
     )
-    readonly_fields = ("calculated_at",)
+    list_filter = ("is_reviewed",)
+    readonly_fields = ("calculated_at", "reviewed_at")
     search_fields = ("site_assessment__project__project_id",)
+
+
+class QuotationLineItemInline(admin.TabularInline):
+    model = QuotationLineItem
+    extra = 0
+
+
+@admin.register(Quotation)
+class QuotationAdmin(admin.ModelAdmin):
+    list_display = ("quotation_id", "project", "status", "subtotal_kes", "prepared_by", "created_at")
+    list_filter = ("status",)
+    search_fields = ("quotation_id", "project__project_id", "project__customer__full_name")
+    readonly_fields = ("quotation_id", "created_at", "sent_at", "approved_at", "rejected_at")
+    inlines = [QuotationLineItemInline]

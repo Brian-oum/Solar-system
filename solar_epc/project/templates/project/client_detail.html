@@ -32,58 +32,30 @@
 
     <div class="card">
         <h2 style="font-size:15px; margin-bottom:16px;">Projects</h2>
-        {% for p in projects %}
+        {% for row in project_rows %}
         <div style="padding:12px 0; {% if not forloop.last %}border-bottom:1px solid var(--line);{% endif %}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span class="mono" style="font-size:13px; font-weight:600;">{{ p.project_id }}</span>
-                <span class="status-badge {{ p.status }}">{{ p.get_status_display }}</span>
+                <span class="mono" style="font-size:13px; font-weight:600;">{{ row.project.project_id }}</span>
+                <span class="status-badge {{ row.project.status }}">{{ row.project.get_status_display }}</span>
             </div>
-            <div style="font-size:12px; color:var(--muted); margin-top:4px;">Opened {{ p.created_at|date:"d M Y" }}</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px;">Opened {{ row.project.created_at|date:"d M Y" }}</div>
+            {% if row.quotation %}
+            <div style="font-size:12px; color:var(--muted); margin-top:2px;">
+                Quotation <span class="mono">{{ row.quotation.quotation_id }}</span> —
+                <span class="status-badge {{ row.quotation.status }}" style="padding:0 7px;">{{ row.quotation.get_status_display }}</span>
+            </div>
+            {% endif %}
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                {% for action in row.actions %}
+                <a href="{% url action.url_name customer.customer_id %}"
+                   class="btn {% if action.primary %}btn-accent{% else %}btn-ghost{% endif %}"
+                   style="font-size:12.5px; padding:7px 12px;">{{ action.label }}</a>
+                {% endfor %}
+            </div>
         </div>
         {% empty %}
         <p style="color:var(--muted); font-size:13.5px;">No project on record.</p>
         {% endfor %}
-
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
-            {% with assessment=projects.first.site_assessment %}
-            {% if not projects.first %}
-                <p style="font-size:12.5px; color:var(--muted);">No project on record yet.</p>
-            {% elif not assessment %}
-                <p style="font-size:12.5px; color:var(--muted); margin:0 0 10px;">Next up in the workflow:</p>
-                <a href="{% url 'site_assessment_schedule' customer.customer_id %}" class="btn btn-accent" style="width:100%; justify-content:center;">
-                    Schedule site assessment
-                </a>
-            {% elif assessment.status == 'scheduled' %}
-                <div class="assessment-summary">
-                    <div class="assessment-summary-row">
-                        <span class="status-badge site_assessment">Assessment scheduled</span>
-                        <span class="mono" style="font-size:12px; color:var(--muted);">{{ assessment.scheduled_date|date:"d M Y, H:i" }}</span>
-                    </div>
-                    <p style="font-size:12.5px; color:var(--muted); margin:8px 0 0;">
-                        Engineer: {{ assessment.assigned_engineer.get_full_name|default:assessment.assigned_engineer.username|default:"Unassigned" }}
-                    </p>
-                </div>
-                <div style="display:flex; gap:10px; margin-top:12px;">
-                    <a href="{% url 'site_assessment_survey' customer.customer_id %}" class="btn btn-accent" style="flex:1; justify-content:center;">Complete assessment</a>
-                    <a href="{% url 'site_assessment_schedule' customer.customer_id %}" class="btn btn-ghost">Reschedule</a>
-                </div>
-            {% elif assessment.status == 'completed' %}
-                <div class="assessment-summary">
-                    <div class="assessment-summary-row">
-                        <span class="status-badge quotation">Assessment completed</span>
-                        <span class="mono" style="font-size:12px; color:var(--muted);">{{ assessment.completed_at|date:"d M Y, H:i" }}</span>
-                    </div>
-                    {% if assessment.recommended_system_size_kw %}
-                    <p style="font-size:12.5px; color:var(--muted); margin:8px 0 0;">Recommended system: {{ assessment.recommended_system_size_kw }} kW</p>
-                    {% endif %}
-                </div>
-                <div style="display:flex; gap:10px; margin-top:12px;">
-                    <a href="{% url 'site_assessment_survey' customer.customer_id %}" class="btn btn-ghost" style="flex:1; justify-content:center;">View / edit survey</a>
-                    <button class="btn btn-ghost" disabled style="opacity:0.6; cursor:not-allowed;">Quotation — coming soon</button>
-                </div>
-            {% endif %}
-            {% endwith %}
-        </div>
     </div>
 </div>
 

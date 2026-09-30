@@ -1,24 +1,60 @@
 {% extends "project/base.html" %}
-{% block title %}Sign up — Solar PMS{% endblock %}
-{% block content %}
-<div class="login-wrap">
-    <h1>Create your account</h1>
-    <p>Registers you as a site engineer. Admin accounts are created by an existing admin.</p>
+{% block title %}Create account — Solar PMS{% endblock %}
+{% block auth_content %}
+<div class="card">
+    <h1 style="font-size:18px; margin-bottom:4px;">Create your account</h1>
+    <p style="font-size:13px; color:var(--muted); margin:0 0 20px;">Registers you as a site engineer. Admin accounts are set up separately.</p>
 
-    {% if form.non_field_errors %}
-        <ul class="messages">
-            {% for error in form.non_field_errors %}
-                <li class="message error">{{ error }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-
-    <form method="post">
+    <form method="post" novalidate>
         {% csrf_token %}
-        {{ form.as_p }}
-        <button class="btn" type="submit">Sign up</button>
+        {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.first_name.id_for_label }}">First name</label>
+                {{ form.first_name }}
+                {% for e in form.first_name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.last_name.id_for_label }}">Last name</label>
+                {{ form.last_name }}
+                {% for e in form.last_name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+        </div>
+        <div class="field-group">
+            <label for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+            {% for e in form.username.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+        </div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.email.id_for_label }}">Email</label>
+                {{ form.email }}
+                {% for e in form.email.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.phone_number.id_for_label }}">Phone <span class="optional">(optional)</span></label>
+                {{ form.phone_number }}
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field-group">
+                <label for="{{ form.password1.id_for_label }}">Password</label>
+                {{ form.password1 }}
+                {% for e in form.password1.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="field-group">
+                <label for="{{ form.password2.id_for_label }}">Confirm password</label>
+                {{ form.password2 }}
+                {% for e in form.password2.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+        </div>
+        <button type="submit" class="btn btn-accent" style="width:100%; justify-content:center;">Create account</button>
     </form>
 
-    <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+    <p style="text-align:center; font-size:13px; color:var(--muted); margin-top:18px;">
+        Already have an account? <a href="{% url 'login' %}" style="color:var(--ink); font-weight:600;">Log in</a>
+    </p>
 </div>
 {% endblock %}

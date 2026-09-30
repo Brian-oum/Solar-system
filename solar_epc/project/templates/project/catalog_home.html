@@ -6,8 +6,12 @@
     <div>
         <div class="eyebrow">Catalog</div>
         <h1>Equipment catalog</h1>
-        <p class="desc">Panels, inverters and batteries the sizing calculator matches recommendations against. Only active, in-stock items are ever recommended.</p>
+        <p class="desc">Panels, inverters and batteries the sizing calculator matches recommendations against, plus any categories you add yourself, such as sundries. Custom items are captured with just a name and a price.</p>
     </div>
+    <button type="button" id="open-category-modal" class="btn btn-accent">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add category
+    </button>
 </div>
 
 <div class="stat-grid">
@@ -42,5 +46,44 @@
         </tbody>
     </table>
 </div>
+
+
+<dialog id="category-modal" class="modal">
+    <div class="modal-body">
+        <h2 style="font-size:17px; margin:0 0 6px;">Add category</h2>
+        <p style="font-size:13px; color:var(--muted, #6b7280); margin:0 0 16px;">Group related products together, for example Sundries. You add the items and their prices afterwards.</p>
+        <form method="post" action="{% url 'category_create' %}" novalidate>
+            {% csrf_token %}
+            <div class="field-group">
+                <label for="{{ category_form.name.id_for_label }}">Category name</label>
+                {{ category_form.name }}
+                {% for e in category_form.name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-accent">Add category</button>
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<style>
+    dialog.modal { border: 0; border-radius: 14px; padding: 0; width: min(440px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    dialog.modal::backdrop { background: rgba(15, 23, 42, .45); }
+    dialog.modal .modal-body { padding: 24px; }
+</style>
+<script>
+    (function () {
+        var dlg = document.getElementById('category-modal');
+        var input = dlg.querySelector('input[name="name"]');
+        function openModal() { dlg.showModal(); if (input) input.focus(); }
+        document.getElementById('open-category-modal').addEventListener('click', openModal);
+        dlg.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', function () { dlg.close(); }); });
+        dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+        {% if open_category_modal %}openModal();{% endif %}
+    })();
+</script>
+
+
 
 {% endblock %}

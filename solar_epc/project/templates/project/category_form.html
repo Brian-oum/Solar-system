@@ -1,0 +1,29 @@
+{% extends "project/base.html" %}
+{% block title %}Add category — Catalog — Solar PMS{% endblock %}
+{% block content %}
+
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Catalog</div>
+        <h1>Add category</h1>
+        <p class="desc">Group related products together, for example Sundries or Mounting &amp; cabling. You add the items and their prices afterwards.</p>
+    </div>
+    <a href="{% url 'catalog_home' %}" class="btn btn-ghost">&larr; Back</a>
+</div>
+
+<div class="card form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="field-group">
+            <label for="{{ form.name.id_for_label }}">Category name</label>
+            {{ form.name }}
+            {% for e in form.name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Add category</button>
+            <a href="{% url 'catalog_home' %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

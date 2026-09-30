@@ -1,10 +1,10 @@
 {% extends "project/base.html" %}
-{% block title %}Recommendation — {{ customer.full_name }} — Solar PMS{% endblock %}
+{% block title %}Engineer review — {{ customer.full_name }} — Solar PMS{% endblock %}
 {% block content %}
 
 <div class="page-head">
     <div>
-        <div class="eyebrow">Phase 2 &middot; Site assessment</div>
+        <div class="eyebrow">Phase 6 &middot; Engineer review</div>
         <h1>System recommendation</h1>
         <p class="desc">{{ customer.full_name }} &middot; <span class="mono">{{ project.project_id }}</span></p>
     </div>
@@ -12,10 +12,23 @@
         <a href="{% url 'site_assessment_survey' customer.customer_id %}" class="btn btn-ghost">&larr; Back to survey</a>
         <form method="post">
             {% csrf_token %}
-            <button type="submit" class="btn btn-accent">Recalculate</button>
+            <button type="submit" name="recalculate" value="1" class="btn btn-ghost">Recalculate</button>
         </form>
     </div>
 </div>
+
+{% if recommendation.is_reviewed %}
+<ul class="messages">
+    <li class="message success">
+        Reviewed by {{ recommendation.reviewed_by.get_full_name|default:recommendation.reviewed_by.username }}
+        on {{ recommendation.reviewed_at|date:"d M Y, H:i" }}.
+    </li>
+</ul>
+{% else %}
+<ul class="messages">
+    <li class="message warning">Not yet reviewed — a quotation can't be created until this is approved.</li>
+</ul>
+{% endif %}
 
 {% if recommendation.warnings %}
 <ul class="messages">
@@ -46,44 +59,71 @@
 
 <div class="survey-layout">
     <div class="card survey-main">
-        <h2 style="font-size:15px; margin-bottom:14px;">Matched equipment</h2>
-        <table class="data">
-            <thead>
-                <tr><th>Role</th><th>Item</th><th>Qty</th><th>Unit price (KES)</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Panels</td>
-                    <td>{% if recommendation.panel %}{{ recommendation.panel }}{% else %}<span class="optional">No match found</span>{% endif %}</td>
-                    <td class="mono">{{ recommendation.panel_quantity }}</td>
-                    <td class="mono">{{ recommendation.panel.unit_price_kes|default:"—" }}</td>
-                </tr>
-                <tr>
-                    <td>Inverter</td>
-                    <td>{% if recommendation.inverter %}{{ recommendation.inverter }}{% else %}<span class="optional">No match found</span>{% endif %}</td>
-                    <td class="mono">{% if recommendation.inverter %}1{% else %}0{% endif %}</td>
-                    <td class="mono">{{ recommendation.inverter.unit_price_kes|default:"—" }}</td>
-                </tr>
-                <tr>
-                    <td>Battery</td>
-                    <td>{% if recommendation.battery %}{{ recommendation.battery }}{% else %}<span class="optional">No match found</span>{% endif %}</td>
-                    <td class="mono">{{ recommendation.battery_quantity }}</td>
-                    <td class="mono">{{ recommendation.battery.unit_price_kes|default:"—" }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <form method="post">
+            {% csrf_token %}
+            <h2 style="font-size:15px; margin-bottom:14px;">Matched equipment</h2>
+            {% if form.non_field_errors %}
+                <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
 
-        {% if recommendation.estimated_total_cost_kes %}
-        <div class="readiness-estimate" style="margin-top:1rem;">
-            <div class="readiness-estimate-label">Estimated equipment cost</div>
-            <div class="readiness-estimate-value mono">KES {{ recommendation.estimated_total_cost_kes }}</div>
-        </div>
-        {% endif %}
+            <table class="data">
+                <thead>
+                    <tr><th>Role</th><th>Item</th><th style="width:90px;">Qty</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Panels</td>
+                        <td>
+                            {{ form.panel }}
+                            {% for e in form.panel.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+                        </td>
+                        <td>{{ form.panel_quantity }}</td>
+                    </tr>
+                    <tr>
+                        <td>Inverter</td>
+                        <td>
+                            {{ form.inverter }}
+                            {% for e in form.inverter.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+                        </td>
+                        <td class="mono">1</td>
+                    </tr>
+                    <tr>
+                        <td>Battery</td>
+                        <td>
+                            {{ form.battery }}
+                            {% for e in form.battery.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+                        </td>
+                        <td>{{ form.battery_quantity }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="helptext" style="margin:6px 0 20px;">
+                Pre-filled from the calculator's best-fit, in-stock match. Swap any item or quantity before signing off if it's not right for this site.
+            </p>
+
+            {% if recommendation.estimated_total_cost_kes %}
+            <div class="readiness-estimate" style="margin-bottom:20px;">
+                <div class="readiness-estimate-label">Estimated equipment cost (as calculated)</div>
+                <div class="readiness-estimate-value mono">KES {{ recommendation.estimated_total_cost_kes }}</div>
+            </div>
+            {% endif %}
+
+            <div class="field-group">
+                <label for="{{ form.review_notes.id_for_label }}">Review notes <span class="optional">(optional)</span></label>
+                {{ form.review_notes }}
+                {% for e in form.review_notes.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" name="approve" value="1" class="btn btn-accent">Approve &amp; continue to quotation</button>
+                <button type="submit" name="save" value="1" class="btn btn-ghost">Save without approving</button>
+            </div>
+        </form>
     </div>
 
     <aside class="readiness-panel">
         <div class="readiness-title">Assessor's own figure</div>
-        <div class="readiness-sub">Entered manually on the survey — this always takes precedence over the calculator above.</div>
+        <div class="readiness-sub">Entered manually on the survey — reference this alongside the calculator's pick above.</div>
         <div class="readiness-estimate" style="margin-top:1rem;">
             <div class="readiness-estimate-label">Recommended system (manual)</div>
             <div class="readiness-estimate-value mono">

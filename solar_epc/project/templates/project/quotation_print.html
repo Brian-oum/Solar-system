@@ -1,0 +1,92 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ quotation.quotation_id }} — {{ customer.full_name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'project/css/base.css' %}">
+<style>
+  body { background:#fff; padding:48px; max-width:800px; margin:0 auto; }
+  .print-actions { text-align:center; margin-bottom:28px; }
+  .doc-header { text-align:center; border-bottom:2px solid var(--accent); padding-bottom:16px; margin-bottom:24px; }
+  .doc-header h1 { font-size:20px; margin-bottom:2px; }
+  .doc-header .tag { font-size:12px; color:var(--muted); }
+  .doc-title { text-align:center; font-size:15px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; margin:24px 0; color:var(--accent); }
+  .doc-meta { display:flex; justify-content:space-between; gap:24px; font-size:13px; margin-bottom:24px; }
+  .doc-meta strong { color:var(--ink); display:block; font-size:11px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; color:var(--muted); }
+  table.quote-table { width:100%; border-collapse:collapse; margin:16px 0 24px; font-size:13px; }
+  table.quote-table th, table.quote-table td { border:1px solid var(--line); padding:9px 11px; text-align:left; }
+  table.quote-table th { background:var(--bg); text-transform:uppercase; font-size:10.5px; letter-spacing:.04em; color:var(--muted); }
+  table.quote-table td.num, table.quote-table th.num { text-align:right; font-family:var(--font-mono); }
+  .total-row td { font-weight:700; background:var(--bg); }
+  .sign-block { margin-top:56px; }
+  .sign-block p { font-size:13px; }
+  .sign-line { border-top:1px solid var(--ink); width:280px; margin-top:44px; padding-top:6px; font-size:11.5px; color:var(--muted); }
+  @media print {
+    .print-actions { display:none; }
+    body { padding:0; max-width:none; }
+  }
+</style>
+</head>
+<body>
+    <div class="print-actions">
+        <button onclick="window.print()" class="btn btn-accent">Print / Save as PDF</button>
+        <a href="{% url 'quotation_download' customer.customer_id %}" class="btn btn-ghost">Download PDF</a>
+    </div>
+
+    <div class="doc-header">
+        <h1>Solar PMS</h1>
+        <div class="tag">EPC Operations &middot; Quotation</div>
+    </div>
+
+    <div class="doc-title">Quotation {{ quotation.quotation_id }}</div>
+
+    <div class="doc-meta">
+        <div>
+            <strong>Prepared for</strong>
+            {{ customer.full_name }}<br>
+            {{ customer.phone_number }}{% if customer.email %} &middot; {{ customer.email }}{% endif %}<br>
+            {% if customer.address %}{{ customer.address }}, {% endif %}{{ customer.county }}
+        </div>
+        <div style="text-align:right;">
+            <strong>Date issued</strong>
+            {{ quotation.created_at|date:"d M Y" }}<br><br>
+            <strong>Valid for</strong>
+            {{ quotation.validity_days }} days
+        </div>
+    </div>
+
+    <table class="quote-table">
+        <thead>
+            <tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price (KES)</th><th class="num">Total (KES)</th></tr>
+        </thead>
+        <tbody>
+            {% for item in line_items %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td class="num">{{ item.quantity }}</td>
+                <td class="num">{{ item.unit_price_kes|floatformat:2 }}</td>
+                <td class="num">{{ item.line_total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="3" style="text-align:right;">Total (KES)</td>
+                <td class="num">{{ quotation.subtotal_kes|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if quotation.payment_terms %}
+    <p style="font-size:13px;"><strong>Payment terms:</strong> {{ quotation.payment_terms }}</p>
+    {% endif %}
+    {% if quotation.notes %}
+    <p style="font-size:13px;"><strong>Notes:</strong> {{ quotation.notes }}</p>
+    {% endif %}
+
+    <div class="sign-block">
+        <p>I hereby confirm acceptance of the terms and approval for installation of the solar PV system.</p>
+        <div class="sign-line">Client signature &amp; date</div>
+    </div>
+</body>
+</html>
