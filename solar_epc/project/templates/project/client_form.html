@@ -10,99 +10,194 @@
     </div>
 </div>
 
-<div class="card form-card">
-    <form method="post" novalidate>
-        {% csrf_token %}
-        {% if form.non_field_errors %}
-            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
-        {% endif %}
+<style>
+    /* Two-column registration layout: contact on the left, everything else on the right */
+    .client-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+        gap: 20px;
+        align-items: start;
+    }
+    .client-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .client-layout .card { padding: 24px 26px; }
 
-        <div class="field-section-title">Contact details</div>
-        <div class="field-group">
-            <label for="{{ form.full_name.id_for_label }}">Customer name</label>
-            {{ form.full_name }}
-            {% for e in form.full_name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
-        </div>
-        <div class="field-row">
-            <div class="field-group">
-                <label for="{{ form.phone_number.id_for_label }}">Phone number</label>
-                {{ form.phone_number }}
-                {% for e in form.phone_number.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
-            </div>
-            <div class="field-group">
-                <label for="{{ form.email.id_for_label }}">Email <span class="optional">(optional)</span></label>
-                {{ form.email }}
-            </div>
-        </div>
-        <div class="field-group">
-            <label for="{{ form.national_id.id_for_label }}">National ID / company registration number <span class="optional">(optional)</span></label>
-            {{ form.national_id }}
-        </div>
+    /* Fields flow into as many columns as the panel width allows */
+    .client-layout .field-row {
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    }
+    .client-layout .field-group:last-child { margin-bottom: 0; }
+    .client-layout .field-row > .field-group { margin-bottom: 20px; }
+    .client-layout .field-row:last-child > .field-group { margin-bottom: 0; }
 
-        <div class="field-section-title">Classification</div>
-        <div class="field-group">
-            <label for="{{ form.customer_type.id_for_label }}">Customer type</label>
-            {{ form.customer_type }}
-        </div>
+    .panel-intro { font-size: 12.5px; color: var(--muted); margin: -6px 0 18px; }
 
-        <div class="field-section-title">Location</div>
-        <div class="field-row">
-            <div class="field-group">
-                <label for="{{ form.county.id_for_label }}">County</label>
-                {{ form.county }}
-                {% for e in form.county.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
-            </div>
-            <div class="field-group">
-                <label for="{{ form.address.id_for_label }}">Physical address <span class="optional">(optional)</span></label>
-                {{ form.address }}
-            </div>
-        </div>
-        <div class="field-group">
-            <label>Location <span class="optional">(optional)</span></label>
-            <div class="location-picker" id="location-picker">
-                <div class="location-picker-info">
-                    <svg class="pin-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                    <span id="location-summary-text">No location selected</span>
+    /* "What happens next" note */
+    .next-steps {
+        background: var(--teal-tint);
+        border-color: transparent;
+        color: var(--teal-dark);
+    }
+    .next-steps h3 {
+        font-family: var(--font-display);
+        font-size: 14px;
+        margin: 0 0 8px;
+        color: var(--teal-dark);
+    }
+    .next-steps ol { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+
+    /* Sticky action bar so Register is always in reach on long/wide forms */
+    .form-actions-bar {
+        position: sticky;
+        bottom: 12px;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 6px 20px rgba(11, 32, 39, 0.08);
+    }
+    .form-actions-bar .form-actions { margin: 0; }
+    .form-actions-bar .hint { font-size: 12.5px; color: var(--muted); }
+
+    @media (max-width: 1000px) {
+        .client-layout { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 560px) {
+        .client-layout .card { padding: 20px 16px; }
+        .location-picker { flex-direction: column; align-items: stretch; }
+        .form-actions-bar .form-actions { width: 100%; }
+        .form-actions-bar .form-actions .btn { flex: 1; justify-content: center; text-align: center; }
+    }
+</style>
+
+<form method="post" novalidate class="client-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <ul class="errorlist" style="margin:0 0 16px;">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    <div class="client-layout">
+
+        <!-- LEFT: who the client is -->
+        <div class="client-col">
+            <section class="card" aria-labelledby="sec-contact">
+                <div class="field-section-title" id="sec-contact">Contact details</div>
+                <div class="field-group">
+                    <label for="{{ form.full_name.id_for_label }}">Customer name</label>
+                    {{ form.full_name }}
+                    {% for e in form.full_name.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
                 </div>
-                <button type="button" class="btn btn-ghost" id="open-map-btn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                    Choose on map
-                </button>
-            </div>
-            <details class="manual-coords">
-                <summary>Enter coordinates manually instead</summary>
-                <div class="field-row" style="margin-top:12px;">
+                <div class="field-group">
+                    <label for="{{ form.phone_number.id_for_label }}">Phone number</label>
+                    {{ form.phone_number }}
+                    {% for e in form.phone_number.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.email.id_for_label }}">Email <span class="optional">(optional)</span></label>
+                    {{ form.email }}
+                    {% for e in form.email.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                </div>
+                <div class="field-group">
+                    <label for="{{ form.national_id.id_for_label }}">National ID / company registration number <span class="optional">(optional)</span></label>
+                    {{ form.national_id }}
+                    {% for e in form.national_id.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                </div>
+            </section>
+
+            <aside class="card next-steps">
+                <h3>What happens next</h3>
+                <ol>
+                    <li>The customer profile is created.</li>
+                    <li>A new project opens with status <strong>Lead</strong>.</li>
+                    <li>The assigned representative can start the site survey and quote.</li>
+                </ol>
+            </aside>
+        </div>
+
+        <!-- RIGHT: classification, location, sales -->
+        <div class="client-col">
+            <section class="card" aria-labelledby="sec-classification">
+                <div class="field-section-title" id="sec-classification">Classification</div>
+                <div class="field-group">
+                    <label for="{{ form.customer_type.id_for_label }}">Customer type</label>
+                    {{ form.customer_type }}
+                    {% for e in form.customer_type.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                </div>
+
+                <div class="field-section-title" id="sec-location">Location</div>
+                <div class="field-row">
                     <div class="field-group">
-                        <label for="{{ form.gps_latitude.id_for_label }}">GPS latitude</label>
-                        {{ form.gps_latitude }}
+                        <label for="{{ form.county.id_for_label }}">County</label>
+                        {{ form.county }}
+                        {% for e in form.county.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
                     </div>
                     <div class="field-group">
-                        <label for="{{ form.gps_longitude.id_for_label }}">GPS longitude</label>
-                        {{ form.gps_longitude }}
+                        <label for="{{ form.address.id_for_label }}">Physical address <span class="optional">(optional)</span></label>
+                        {{ form.address }}
+                        {% for e in form.address.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
                     </div>
                 </div>
-            </details>
-        </div>
+                <div class="field-group">
+                    <label>Map location <span class="optional">(optional)</span></label>
+                    <div class="location-picker" id="location-picker">
+                        <div class="location-picker-info">
+                            <svg class="pin-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span id="location-summary-text">No location selected</span>
+                        </div>
+                        <button type="button" class="btn btn-ghost" id="open-map-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                            Choose on map
+                        </button>
+                    </div>
+                    <details class="manual-coords"{% if form.gps_latitude.errors or form.gps_longitude.errors %} open{% endif %}>
+                        <summary>Enter coordinates manually instead</summary>
+                        <div class="field-row" style="margin-top:12px;">
+                            <div class="field-group">
+                                <label for="{{ form.gps_latitude.id_for_label }}">GPS latitude</label>
+                                {{ form.gps_latitude }}
+                                {% for e in form.gps_latitude.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                            </div>
+                            <div class="field-group">
+                                <label for="{{ form.gps_longitude.id_for_label }}">GPS longitude</label>
+                                {{ form.gps_longitude }}
+                                {% for e in form.gps_longitude.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                            </div>
+                        </div>
+                    </details>
+                </div>
 
-        <div class="field-section-title">Sales</div>
-        <div class="field-row">
-            <div class="field-group">
-                <label for="{{ form.referral_source.id_for_label }}">Referral source <span class="optional">(optional)</span></label>
-                {{ form.referral_source }}
-            </div>
-            <div class="field-group">
-                <label for="{{ form.assigned_rep.id_for_label }}">Assigned sales representative <span class="optional">(optional)</span></label>
-                {{ form.assigned_rep }}
-                <div class="helptext">Defaults to you if left blank.</div>
-            </div>
+                <div class="field-section-title" id="sec-sales">Sales</div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="{{ form.referral_source.id_for_label }}">Referral source <span class="optional">(optional)</span></label>
+                        {{ form.referral_source }}
+                        {% for e in form.referral_source.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                    </div>
+                    <div class="field-group">
+                        <label for="{{ form.assigned_rep.id_for_label }}">Assigned sales representative <span class="optional">(optional)</span></label>
+                        {{ form.assigned_rep }}
+                        {% for e in form.assigned_rep.errors %}<ul class="errorlist"><li>{{ e }}</li></ul>{% endfor %}
+                        <div class="helptext">Defaults to you if left blank.</div>
+                    </div>
+                </div>
+            </section>
         </div>
+    </div>
 
+    <div class="form-actions-bar">
+        <span class="hint">Fields marked optional can be completed later.</span>
         <div class="form-actions">
-            <button type="submit" class="btn btn-accent">Register client</button>
             <a href="{% url 'client_list' %}" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-accent">Register client</button>
         </div>
-    </form>
-</div>
+    </div>
+</form>
 
 <div class="map-modal-overlay" id="map-modal-overlay">
     <div class="map-modal">

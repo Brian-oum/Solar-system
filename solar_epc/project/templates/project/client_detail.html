@@ -33,30 +33,91 @@
     <div class="card">
         <h2 style="font-size:15px; margin-bottom:16px;">Projects</h2>
         {% for row in project_rows %}
-        <div style="padding:12px 0; {% if not forloop.last %}border-bottom:1px solid var(--line);{% endif %}">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="proj{% if not forloop.last %} proj-sep{% endif %}">
+            <div class="proj-head">
                 <span class="mono" style="font-size:13px; font-weight:600;">{{ row.project.project_id }}</span>
                 <span class="status-badge {{ row.project.status }}">{{ row.project.get_status_display }}</span>
             </div>
-            <div style="font-size:12px; color:var(--muted); margin-top:4px;">Opened {{ row.project.created_at|date:"d M Y" }}</div>
-            {% if row.quotation %}
-            <div style="font-size:12px; color:var(--muted); margin-top:2px;">
-                Quotation <span class="mono">{{ row.quotation.quotation_id }}</span> —
-                <span class="status-badge {{ row.quotation.status }}" style="padding:0 7px;">{{ row.quotation.get_status_display }}</span>
-            </div>
-            {% endif %}
-            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                {% for action in row.actions %}
-                <a href="{% url action.url_name customer.customer_id %}"
-                   class="btn {% if action.primary %}btn-accent{% else %}btn-ghost{% endif %}"
-                   style="font-size:12.5px; padding:7px 12px;">{{ action.label }}</a>
+            <div class="proj-meta">Opened {{ row.project.created_at|date:"d M Y" }}</div>
+
+            {% if row.is_latest %}
+            <ol class="wf" aria-label="Project workflow">
+                {% for step in row.workflow %}
+                <li class="wf-step wf-{{ step.state }}">
+                    <span class="wf-marker" aria-hidden="true">
+                        {% if step.state == "done" %}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>
+                        {% else %}{{ step.number }}{% endif %}
+                    </span>
+                    <div class="wf-body">
+                        <div class="wf-title">
+                            {{ step.title }}
+                            {% if step.state == "current" %}<span class="wf-tag">Next</span>{% endif %}
+                        </div>
+                        <div class="wf-summary">
+                            {{ step.summary }}{% if step.date %} <span class="wf-date">{{ step.date|date:"d M Y" }}</span>{% endif %}
+                        </div>
+                        {% if step.links %}
+                        <div class="wf-links">
+                            {% for link in step.links %}
+                            <a href="{% url link.url_name customer.customer_id %}"
+                               class="btn {% if step.state == 'current' and forloop.first %}btn-accent{% else %}btn-ghost{% endif %}">{{ link.label }}</a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </li>
                 {% endfor %}
-            </div>
+            </ol>
+            {% else %}
+            <div class="proj-meta">Earlier project &mdash; workflow actions apply to the most recent project only.</div>
+            {% endif %}
         </div>
         {% empty %}
         <p style="color:var(--muted); font-size:13.5px;">No project on record.</p>
         {% endfor %}
     </div>
 </div>
+
+<style>
+    .proj { padding: 14px 0; }
+    .proj:first-of-type { padding-top: 0; }
+    .proj-sep { border-bottom: 1px solid var(--line); }
+    .proj-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .proj-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Vertical workflow stepper */
+    .wf { list-style: none; margin: 18px 0 0; padding: 0; }
+    .wf-step { position: relative; display: flex; gap: 14px; padding-bottom: 20px; }
+    .wf-step:last-child { padding-bottom: 0; }
+    .wf-step::before {            /* connector line */
+        content: ""; position: absolute; left: 13px; top: 28px; bottom: 0;
+        width: 2px; background: var(--line);
+    }
+    .wf-step:last-child::before { display: none; }
+    .wf-done::before { background: var(--accent); }
+
+    .wf-marker {
+        flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700;
+        background: var(--surface); color: var(--muted);
+        border: 2px solid var(--line);
+    }
+    .wf-done .wf-marker { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .wf-current .wf-marker { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px rgba(10,122,104,0.16); }
+
+    .wf-body { min-width: 0; flex: 1; padding-top: 3px; }
+    .wf-title { font-size: 13.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+    .wf-locked .wf-title { color: var(--muted); }
+    .wf-tag {
+        font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+        color: var(--teal-dark); background: var(--teal-tint); padding: 1px 7px; border-radius: 999px;
+    }
+    .wf-summary { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .wf-date { margin-left: 4px; padding-left: 8px; border-left: 1px solid var(--line); }
+    .wf-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .wf-links .btn { font-size: 12.5px; padding: 7px 12px; }
+</style>
 
 {% endblock %}

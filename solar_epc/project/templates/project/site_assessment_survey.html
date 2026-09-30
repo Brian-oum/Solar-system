@@ -467,6 +467,7 @@
     // stays aligned at any width or label length.
     let sunPlaced = false;
     function positionSun(index, instant) {
+        if (!sunStepper || !sunMarker || !nodes[index]) return;
         const dot = nodes[index].querySelector('.node-dot');
         const host = sunStepper.getBoundingClientRect();
         const d = dot.getBoundingClientRect();
@@ -485,11 +486,12 @@
             n.classList.toggle('done', i < index);
             if (i === index) n.setAttribute('aria-current', 'step'); else n.removeAttribute('aria-current');
         });
-        positionSun(index, !sunPlaced);
+        const firstRun = !sunPlaced;
+        positionSun(index, firstRun);
         sunPlaced = true;
         backBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
         navBar.style.display = index === steps.length - 1 ? 'none' : 'flex';
-        surveyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (!firstRun) surveyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     nodes.forEach(function (n) {
@@ -507,13 +509,6 @@
 
     // ---------------------------------------------------------------- live readiness panel
     function byId(id) { return document.getElementById(id); }
-    const fieldIds = [
-        'id_roof_condition', 'id_structural_integrity_ok', 'id_shading_level',
-        'id_current_supply_type', 'id_electrical_panel_capacity_amps',
-        'id_available_installation_area_sqm', 'id_recommended_system_size_kw',
-        'id_average_monthly_consumption_kwh'
-    ];
-
     // Mirrors the constants in sizing.py's compute_sizing() — kept in sync
     // manually since this is just a live preview; the authoritative
     // catalog-matched figure is calculated server-side once the survey is
@@ -772,6 +767,8 @@
 
     const roofScoreMap = { excellent: 100, good: 75, fair: 45, poor: 20 };
     const shadeDotsMap = { none: 5, minimal: 4, moderate: 2, heavy: 1 };
+    // A value we don't recognise still counts as "answered", never as empty.
+    function scoreOf(map, value, fallback) { return value ? (map[value] || fallback) : 0; }
 
     function selectedLabel(select) {
         if (!select || select.selectedIndex < 0) return '';
@@ -780,6 +777,12 @@
     }
 
     function updateReadiness() {
+        const roofTypeEl = byId('id_roof_type');
+        const roofOrientationEl = byId('id_roof_orientation');
+        const roofAreaEl = byId('id_roof_area_sqm');
+        const roofTiltEl = byId('id_roof_tilt_degrees');
+        const consumptionEl = byId('id_average_monthly_consumption_kwh');
+        const backupEl = byId('id_has_existing_backup');
         const roofConditionEl = byId('id_roof_condition');
         const structuralEl = byId('id_structural_integrity_ok');
         const shadingEl = byId('id_shading_level');
@@ -789,26 +792,38 @@
         const estimateEl = byId('id_recommended_system_size_kw');
 
         const roofCondition = roofConditionEl ? roofConditionEl.value : '';
-        const roofScore = roofScoreMap[roofCondition] || 0;
-        byId('bar-roof').style.width = roofScore + '%';
-        byId('val-roof').textContent = roofCondition
-            ? selectedLabel(roofConditionEl) + (structuralEl && !structuralEl.checked ? ' — structure needs review' : '')
+        const roofType = roofTypeEl ? roofTypeEl.value : '';
+        const roofOrientation = roofOrientationEl ? roofOrientationEl.value : '';
+        const roofArea = roofAreaEl ? roofAreaEl.value : '';
+        const roofTilt = roofTiltEl ? roofTiltEl.value : '';
+        byId('bar-roof').style.width = scoreOf(roofScoreMap, roofCondition, 50) + '%';
+        const roofBits = [
+            roofCondition ? selectedLabel(roofConditionEl) : '',
+            roofType ? selectedLabel(roofTypeEl) : '',
+            roofOrientation ? selectedLabel(roofOrientationEl) : '',
+            roofArea ? roofArea + ' m²' : '',
+            roofTilt ? roofTilt + '° tilt' : ''
+        ].filter(Boolean);
+        byId('val-roof').textContent = roofBits.length
+            ? roofBits.join(' · ') + (structuralEl && !structuralEl.checked ? ' — structure needs review' : '')
             : 'Not yet assessed';
 
         const shadingLevel = shadingEl ? shadingEl.value : '';
-        const filled = shadeDotsMap[shadingLevel] || 0;
+        const filled = scoreOf(shadeDotsMap, shadingLevel, 3);
         byId('dots-shading').textContent = '●'.repeat(filled) + '○'.repeat(5 - filled);
 
         const supplyType = supplyEl ? supplyEl.value : '';
         const amps = ampsEl ? ampsEl.value : '';
         byId('val-power').textContent = supplyType
-            ? selectedLabel(supplyEl) + (amps ? ' · ' + amps + 'A' : '')
+            ? selectedLabel(supplyEl) + (amps ? ' · ' + amps + 'A' : '') + (backupEl && backupEl.checked ? ' · backup on site' : '')
             : '—';
 
         const totals = deviceTotals();
         byId('val-devices').textContent = totals.count
             ? totals.count + (totals.count === 1 ? ' device · ' : ' devices · ') + totals.kwh.toFixed(1) + ' kWh/day · ' + totals.kw.toFixed(1) + ' kW'
-            : '—';
+            : (consumptionEl && parseFloat(consumptionEl.value) > 0
+                ? parseFloat(consumptionEl.value) + ' kWh/month (from bills)'
+                : '—');
         const summaryLine = byId('load-summary-line');
         if (summaryLine) {
             summaryLine.textContent = totals.count
@@ -833,7 +848,11 @@
             ? manualEstimate + ' kW (manual)'
             : (autoEstimateKw !== null ? autoEstimateKw.toFixed(1) + ' kW (auto)' : '—');
 
-        const tracked = [roofCondition, shadingLevel, supplyType, totals.count || (byId('id_average_monthly_consumption_kwh') || {}).value, space, manualEstimate || autoEstimateKw];
+        const tracked = [
+            roofType, roofOrientation, roofCondition, shadingLevel, supplyType,
+            totals.count || (consumptionEl && consumptionEl.value),
+            space, manualEstimate || autoEstimateKw
+        ];
         const filledCount = tracked.filter(Boolean).length;
         setRing(Math.round((filledCount / tracked.length) * 100));
     }
@@ -850,15 +869,10 @@
         });
     }
 
-    fieldIds.forEach(function (id) {
-        const el = byId(id);
-        if (el) el.addEventListener('input', updateReadiness);
-        if (el) el.addEventListener('change', updateReadiness);
-    });
-
-    // Device rows: any edit refreshes the totals (events bubble up from the rows).
-    groupsEl.addEventListener('input', updateReadiness);
-    groupsEl.addEventListener('change', updateReadiness);
+    // One listener on the form: every field (survey fields and device rows,
+    // including rows added later) refreshes the panel as it changes.
+    loadForm.addEventListener('input', updateReadiness);
+    loadForm.addEventListener('change', updateReadiness);
 
     // Expand / collapse every category.
     byId('load-expand-all').addEventListener('click', function () {
